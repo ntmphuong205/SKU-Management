@@ -4,15 +4,16 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard, AlertTriangle, List,
-  Search, PackageCheck, Settings,
+  Search, PackageCheck, Sparkles,
 } from 'lucide-react'
 
 const NAV = [
-  { href: '/',          label: 'Tổng quan',          icon: LayoutDashboard },
+  { href: '/',          label: 'Tổng quan',            icon: LayoutDashboard },
   { href: '/canh-bao',  label: 'Cảnh báo & Hành động', icon: AlertTriangle   },
-  { href: '/danh-sach', label: 'Danh sách SKU',       icon: List            },
-  { href: '/chi-tiet',  label: 'Chi tiết SKU',        icon: Search          },
-  { href: '/mo-phong',  label: 'Mô phỏng nhập hàng', icon: PackageCheck    },
+  { href: '/danh-sach', label: 'Danh sách SKU',         icon: List            },
+  { href: '/chi-tiet',  label: 'Chi tiết SKU',          icon: Search          },
+  { href: '/mo-phong',  label: 'Mô phỏng nhập hàng',   icon: PackageCheck    },
+  { href: '/tro-ly',    label: 'Trợ lý AI',             icon: Sparkles        },
 ]
 
 export default function Sidebar() {
