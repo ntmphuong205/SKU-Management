@@ -6,8 +6,8 @@ import { Search } from 'lucide-react'
 import StatusBadge from '@/components/StatusBadge'
 import KpiCard from '@/components/KpiCard'
 import {
-  AreaChart, Area, XAxis, YAxis, CartesianGrid,
-  Tooltip, ResponsiveContainer, ReferenceLine,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid,
+  Tooltip, ResponsiveContainer, Legend,
 } from 'recharts'
 
 interface SkuDetail {
@@ -39,12 +39,13 @@ const REASON_MAP: Record<string, string> = {
   ' sale days in last 180 days': ' ngày bán trong 180 ngày qua',
   'Last sale was ': 'Bán cuối cách ',
   ' days ago': ' ngày',
-  'High return ratio:': 'Tỷ lệ hoàn hàng:',
-  'Dormant SKU — no sale in last 180 days': 'Không có giao dịch 180 ngày qua',
+  'High return ratio:': 'Tỷ lệ hoàn hàng cao:',
+  'Dormant SKU — no sale in last 180 days': 'Không phát sinh giao dịch trong 180 ngày qua',
   'Frequent recent sales': 'Bán hàng thường xuyên gần đây',
-  'Stable model agreement': 'Dự báo ổn định',
+  'Stable model agreement': 'Dự báo ổn định — các mô hình đồng thuận',
   'High profit SKU: top 10%': 'SKU lợi nhuận cao (top 10%)',
-  'disagreement': 'Dự báo chưa ổn định — cần xác nhận',
+  'disagreement': 'Các mô hình dự báo chưa đồng thuận — cần xác nhận',
+  'Intermittent demand': 'Nhu cầu gián đoạn',
 }
 
 function translateReason(raw: string): string {
@@ -84,10 +85,11 @@ function ChiTietContent() {
 
   useEffect(() => { if (skuParam) { setSearchInput(skuParam); doSearch(skuParam) } }, [skuParam])
 
-  // Build 56-day forecast bar data (weekly buckets)
+  // Build 56-day forecast chart: weeks 1-4 from validation (F1-F28), weeks 5-8 from evaluation (F29-F56)
   const weeklyForecast = sku ? Array.from({ length: 8 }, (_, i) => ({
-    week: `Tuần ${i + 1}`,
-    'Dự báo': Math.round(sku.avg_forecast_per_day * 7),
+    tuần: `T${i + 1}`,
+    'Tháng đầu (F1–F28)': i < 4 ? Math.round(sku.forecast_28d_validation / 4) : null,
+    'Tháng tiếp (F29–F56)': i >= 4 ? Math.round(sku.forecast_28d_evaluation / 4) : null,
   })) : []
 
   const actionBg = {
@@ -150,9 +152,9 @@ function ChiTietContent() {
           <div>
             <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-3">Dự báo nhu cầu</h2>
             <div className="grid grid-cols-3 gap-3">
-              <KpiCard label="Dự báo 28 ngày tới"  value={fmt(sku.forecast_28d_validation, ' units')} variant="info" />
-              <KpiCard label="Dự báo tháng 2 (28 ngày)" value={fmt(sku.forecast_28d_evaluation, ' units')} />
-              <KpiCard label="Tổng dự báo 56 ngày" value={fmt(sku.forecast_56d_total, ' units')} variant="info" />
+              <KpiCard label="Dự báo 28 ngày tới (F1–F28)"  value={fmt(sku.forecast_28d_validation, ' units')} variant="info" />
+              <KpiCard label="Dự báo 28 ngày tiếp (F29–F56)" value={fmt(sku.forecast_28d_evaluation, ' units')} />
+              <KpiCard label="Tổng dự báo 56 ngày"           value={fmt(sku.forecast_56d_total, ' units')} variant="info" />
             </div>
           </div>
 
@@ -160,9 +162,9 @@ function ChiTietContent() {
           <div>
             <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-3">Tồn kho mô phỏng</h2>
             <div className="grid grid-cols-3 gap-3">
-              <KpiCard label="Tồn kho ước tính"        value={fmt(sku._stock, ' units')} />
-              <KpiCard label="Nhu cầu trong lead time"  value={fmt(sku._ltDemand, ' units')} variant={sku._status === 'stockout' ? 'warning' : 'default'} />
-              <KpiCard label="Cần đặt thêm"             value={sku._reorder > 0 ? fmt(sku._reorder, ' units') : 'Chưa cần'} variant={sku._reorder > 0 ? 'danger' : 'success'} />
+              <KpiCard label="Tồn kho ước tính (hiện tại)"      value={fmt(sku._stock, ' units')} />
+              <KpiCard label="Nhu cầu trong thời gian chờ hàng" value={fmt(sku._ltDemand, ' units')} variant={sku._status === 'stockout' ? 'warning' : 'default'} />
+              <KpiCard label="Số lượng cần đặt thêm"            value={sku._reorder > 0 ? fmt(sku._reorder, ' units') : 'Chưa cần đặt'} variant={sku._reorder > 0 ? 'danger' : 'success'} />
             </div>
           </div>
 
@@ -170,32 +172,31 @@ function ChiTietContent() {
           <div>
             <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-3">Lịch sử kinh doanh</h2>
             <div className="grid grid-cols-4 gap-3">
-              <KpiCard label="Ngày bán (180 ngày gần)" value={`${sku.sale_days_180} ngày`} />
-              <KpiCard label="Lần bán cuối cách"        value={sku.days_since_last_sale > 9000 ? 'Chưa có' : `${sku.days_since_last_sale} ngày`} />
-              <KpiCard label="Tỷ lệ hoàn hàng"          value={`${(sku.return_ratio * 100).toFixed(1)}%`} variant={sku.return_ratio > 0.05 ? 'warning' : 'default'} />
-              <KpiCard label="Tổng đã bán (net)"        value={`${sku.net_qty.toLocaleString(undefined,{maximumFractionDigits:0})} units`} />
+              <KpiCard label="Số ngày bán (180 ngày gần nhất)" value={`${sku.sale_days_180} ngày`} />
+              <KpiCard label="Giao dịch cuối cách đây"          value={sku.days_since_last_sale > 9000 ? 'Chưa có dữ liệu' : `${sku.days_since_last_sale} ngày`} />
+              <KpiCard label="Tỷ lệ hoàn hàng"                  value={`${(sku.return_ratio * 100).toFixed(1)}%`} variant={sku.return_ratio > 0.05 ? 'warning' : 'default'} />
+              <KpiCard label="Tổng đã bán (sau hoàn trả)"       value={`${sku.net_qty.toLocaleString(undefined,{maximumFractionDigits:0})} units`} />
             </div>
           </div>
 
           <div className="grid grid-cols-3 gap-5">
             {/* Forecast chart */}
             <div className="col-span-2 bg-white rounded-lg border border-slate-200 p-5">
-              <h3 className="text-sm font-semibold text-slate-700 mb-4">Dự báo theo tuần (56 ngày tới)</h3>
+              <h3 className="text-sm font-semibold text-slate-700 mb-1">Dự báo theo tuần — 56 ngày tới</h3>
+              <p className="text-xs text-slate-400 mb-4">
+                Tháng đầu (F1–F28): {sku?.forecast_28d_validation.toLocaleString(undefined,{maximumFractionDigits:0})} units &nbsp;·&nbsp;
+                Tháng tiếp (F29–F56): {sku?.forecast_28d_evaluation.toLocaleString(undefined,{maximumFractionDigits:0})} units
+              </p>
               <ResponsiveContainer width="100%" height={200}>
-                <AreaChart data={weeklyForecast} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="fcGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%"  stopColor="#2563eb" stopOpacity={0.2} />
-                      <stop offset="95%" stopColor="#2563eb" stopOpacity={0}   />
-                    </linearGradient>
-                  </defs>
+                <BarChart data={weeklyForecast} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                  <XAxis dataKey="week" tick={{ fontSize: 11 }} />
+                  <XAxis dataKey="tuần" tick={{ fontSize: 11 }} />
                   <YAxis tick={{ fontSize: 11 }} />
-                  <Tooltip formatter={(v) => [`${Number(v).toFixed(1)} units`, 'Dự báo']} />
-                  <Area type="monotone" dataKey="Dự báo"
-                    stroke="#2563eb" strokeWidth={2} fill="url(#fcGrad)" />
-                </AreaChart>
+                  <Tooltip formatter={(v) => [`${Number(v).toFixed(0)} units`, '']} />
+                  <Legend wrapperStyle={{ fontSize: 11 }} />
+                  <Bar dataKey="Tháng đầu (F1–F28)" fill="#2563eb" radius={[3, 3, 0, 0]} />
+                  <Bar dataKey="Tháng tiếp (F29–F56)" fill="#0891b2" radius={[3, 3, 0, 0]} />
+                </BarChart>
               </ResponsiveContainer>
             </div>
 
@@ -217,18 +218,18 @@ function ChiTietContent() {
                 <h3 className="text-sm font-semibold text-slate-700 mb-3">Hiệu quả kinh doanh</h3>
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm">
-                    <span className="text-slate-500">Doanh thu</span>
+                    <span className="text-slate-500">Tổng doanh thu</span>
                     <span className="font-medium">{fmt(sku.revenue, ' đ')}</span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-slate-500">Lợi nhuận</span>
+                    <span className="text-slate-500">Lợi nhuận gộp</span>
                     <span className={`font-medium ${sku.profit > 0 ? 'text-emerald-700' : 'text-red-600'}`}>
                       {fmt(Math.abs(sku.profit), ' đ')}{sku.profit < 0 ? ' (lỗ)' : ''}
                     </span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-slate-500">Tổng bán (net)</span>
-                    <span className="font-medium">{sku.net_qty.toLocaleString(undefined,{maximumFractionDigits:0})}</span>
+                    <span className="text-slate-500">Đã bán (net, sau hoàn)</span>
+                    <span className="font-medium">{sku.net_qty.toLocaleString(undefined,{maximumFractionDigits:0})} units</span>
                   </div>
                 </div>
               </div>

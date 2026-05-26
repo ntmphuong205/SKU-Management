@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
-import { Search } from 'lucide-react'
+import { Search, Download } from 'lucide-react'
 import StatusBadge from '@/components/StatusBadge'
 import Link from 'next/link'
 
@@ -47,6 +47,30 @@ export default function DanhSach() {
   useEffect(() => { setPage(1) }, [search, profit, demand, status, sort, dir])
   useEffect(() => { load() }, [load])
 
+  async function handleExport() {
+    const params = new URLSearchParams({ sort, dir, limit: '10000' })
+    if (search) params.set('search', search)
+    if (profit) params.set('profit', profit)
+    if (demand) params.set('demand', demand)
+    if (status) params.set('status', status)
+    const data = await fetch(`/api/skus?${params}`).then(r => r.json())
+    const exportRows: Row[] = data.rows
+
+    const headers = ['Mã SKU', 'Phân khúc lợi nhuận', 'Xu hướng bán', 'Ngày bán (180 ngày)',
+      'Bán cuối cách (ngày)', 'Dự báo 28 ngày', 'Dự báo 56 ngày', 'Cần đặt thêm', 'Trạng thái tồn kho', 'Hành động đề xuất']
+    const keys: (keyof Row)[] = ['ItemCode', 'profit_segment', 'demand_class', 'sale_days_180',
+      'days_since_last_sale', 'forecast_28d_validation', 'forecast_56d_total', '_reorder', '_status', 'recommended_action']
+
+    const esc = (v: unknown) => { const s = String(v ?? ''); return s.includes(',') || s.includes('"') ? `"${s.replace(/"/g, '""')}"` : s }
+    const csv = [headers.join(','), ...exportRows.map(r => keys.map(k => esc(r[k])).join(','))].join('\n')
+
+    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url; a.download = `danh-sach-sku-${new Date().toISOString().slice(0, 10)}.csv`; a.click()
+    URL.revokeObjectURL(url)
+  }
+
   function toggleSort(col: string) {
     if (sort === col) setDir(d => d === 'desc' ? 'asc' : 'desc')
     else { setSort(col); setDir('desc') }
@@ -66,9 +90,17 @@ export default function DanhSach() {
 
   return (
     <div className="p-6 space-y-5">
-      <div className="border-b border-slate-200 pb-4">
-        <h1 className="text-xl font-semibold text-slate-800">Danh sách SKU</h1>
-        <p className="text-sm text-slate-500 mt-0.5">Toàn bộ {total.toLocaleString()} SKU — tìm kiếm, lọc và sắp xếp</p>
+      <div className="border-b border-slate-200 pb-4 flex items-start justify-between">
+        <div>
+          <h1 className="text-xl font-semibold text-slate-800">Danh sách SKU</h1>
+          <p className="text-sm text-slate-500 mt-0.5">Toàn bộ {total.toLocaleString()} SKU — tìm kiếm, lọc và sắp xếp</p>
+        </div>
+        <button
+          onClick={handleExport}
+          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-600 border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors"
+        >
+          <Download size={13} /> Xuất CSV
+        </button>
       </div>
 
       {/* Filter bar */}

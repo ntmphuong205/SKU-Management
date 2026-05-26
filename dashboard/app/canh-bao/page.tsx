@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { AlertTriangle, Download } from 'lucide-react'
+import Link from 'next/link'
 import StatusBadge from '@/components/StatusBadge'
 import { ACTION_LABEL } from '@/lib/types'
 
@@ -71,6 +72,27 @@ export default function CanhBao() {
     slow:    rows.filter(r => r.recommended_action === 'Review slow-moving stock').length,
   }
 
+  async function handleExport() {
+    const params = new URLSearchParams({ sort: 'forecast_56d_total', dir: 'desc', limit: '10000' })
+    if (actionFilter) params.set('action', actionFilter)
+    const data = await fetch(`/api/skus?${params}`).then(r => r.json())
+    const exportRows: Row[] = (data.rows as Row[]).filter(r => URGENT_ACTIONS.includes(r.recommended_action))
+
+    const headers = ['Mã SKU', 'Phân khúc lợi nhuận', 'Xu hướng bán', 'Dự báo 28 ngày', 'Dự báo 56 ngày',
+      'Cần đặt thêm', 'Trạng thái tồn kho', 'Hành động đề xuất', 'Lý do']
+    const keys: (keyof Row)[] = ['ItemCode', 'profit_segment', 'demand_class',
+      'forecast_28d_validation', 'forecast_56d_total', '_reorder', '_status', 'recommended_action', 'reason_codes']
+
+    const esc = (v: unknown) => { const s = String(v ?? ''); return s.includes(',') || s.includes('"') ? `"${s.replace(/"/g, '""')}"` : s }
+    const csv = [headers.join(','), ...exportRows.map(r => keys.map(k => esc(r[k])).join(','))].join('\n')
+
+    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url; a.download = `canh-bao-sku-${new Date().toISOString().slice(0, 10)}.csv`; a.click()
+    URL.revokeObjectURL(url)
+  }
+
   function rowBg(r: Row) {
     if (r.recommended_action === 'Prioritize replenishment') return 'bg-red-50 hover:bg-red-100'
     if (['Review with Sales','Manual review required'].includes(r.recommended_action)) return 'bg-amber-50 hover:bg-amber-100'
@@ -92,9 +114,17 @@ export default function CanhBao() {
   return (
     <div className="p-6 space-y-5">
       {/* Header */}
-      <div className="border-b border-slate-200 pb-4">
-        <h1 className="text-xl font-semibold text-slate-800">Cảnh báo & Hành động</h1>
-        <p className="text-sm text-slate-500 mt-0.5">Danh sách SKU cần xử lý — sắp xếp theo mức độ ưu tiên</p>
+      <div className="border-b border-slate-200 pb-4 flex items-start justify-between">
+        <div>
+          <h1 className="text-xl font-semibold text-slate-800">Cảnh báo & Hành động</h1>
+          <p className="text-sm text-slate-500 mt-0.5">Danh sách SKU cần xử lý — sắp xếp theo mức độ ưu tiên</p>
+        </div>
+        <button
+          onClick={handleExport}
+          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-600 border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors"
+        >
+          <Download size={13} /> Xuất CSV
+        </button>
       </div>
 
       {/* Summary counts */}
@@ -162,8 +192,10 @@ export default function CanhBao() {
                 <tr><td colSpan={9} className="px-3 py-8 text-center text-sm text-slate-400">Không có dữ liệu</td></tr>
               ) : rows.map(r => (
                 <tr key={r.ItemCode} className={`text-sm transition-colors ${rowBg(r)}`}>
-                  <td className="px-3 py-2.5 font-mono font-medium text-slate-800 whitespace-nowrap">
-                    {r.ItemCode}
+                  <td className="px-3 py-2.5 font-mono font-medium whitespace-nowrap">
+                    <Link href={`/chi-tiet?sku=${r.ItemCode}`} className="text-blue-700 hover:underline">
+                      {r.ItemCode}
+                    </Link>
                   </td>
                   <td className="px-3 py-2.5 whitespace-nowrap">
                     <StatusBadge value={r.profit_segment} type="profit" />
