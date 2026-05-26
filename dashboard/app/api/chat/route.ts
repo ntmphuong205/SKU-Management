@@ -2,8 +2,53 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getSkuData, getKpiSummary, enrichSku } from '@/lib/data'
 
 const GEMINI_KEY = process.env.GEMINI_API_KEY
-const GEMINI_URL =
-  'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent'
+const BASE = 'https://generativelanguage.googleapis.com/v1beta'
+
+// Thứ tự ưu tiên model — tự động fallback nếu model không khả dụng
+const MODEL_CANDIDATES = [
+  'gemini-2.0-flash',
+  'gemini-2.0-flash-lite',
+  'gemini-1.5-flash-latest',
+  'gemini-1.5-flash',
+  'gemini-1.5-flash-001',
+  'gemini-1.5-pro',
+  'gemini-pro',
+]
+
+let _resolvedModel: string | null = null
+
+async function resolveModel(): Promise<string> {
+  if (_resolvedModel) return _resolvedModel
+
+  try {
+    const res = await fetch(`${BASE}/models?key=${GEMINI_KEY}`)
+    const data = await res.json()
+    const available: string[] = (data.models ?? [])
+      .filter((m: { supportedGenerationMethods?: string[] }) =>
+        m.supportedGenerationMethods?.includes('generateContent')
+      )
+      .map((m: { name: string }) => m.name.replace('models/', ''))
+
+    for (const candidate of MODEL_CANDIDATES) {
+      if (available.includes(candidate)) {
+        _resolvedModel = candidate
+        console.log('Gemini model resolved:', candidate)
+        return candidate
+      }
+    }
+    // Fallback: dùng model đầu tiên có generateContent
+    if (available.length > 0) {
+      _resolvedModel = available[0]
+      return available[0]
+    }
+  } catch (e) {
+    console.error('resolveModel error:', e)
+  }
+
+  // Hard fallback
+  _resolvedModel = 'gemini-2.0-flash'
+  return _resolvedModel
+}
 
 interface ChatMessage {
   role: 'user' | 'assistant'
@@ -163,7 +208,9 @@ ${contextData}`
   ]
 
   try {
-    const res = await fetch(`${GEMINI_URL}?key=${GEMINI_KEY}`, {
+    const model = await resolveModel()
+    const url = `${BASE}/models/${model}:generateContent?key=${GEMINI_KEY}`
+    const res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
