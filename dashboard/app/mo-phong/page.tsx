@@ -1,7 +1,8 @@
 'use client'
 
-import { useEffect, useState, Suspense } from 'react'
+import { useEffect, useState, Suspense, useRef } from 'react'
 import { useSearchParams } from 'next/navigation'
+import { Search } from 'lucide-react'
 import KpiCard from '@/components/KpiCard'
 import StatusBadge from '@/components/StatusBadge'
 import {
@@ -21,9 +22,13 @@ function MoPhongContent() {
   const searchParams = useSearchParams()
   const initSku = searchParams.get('sku') ?? ''
 
-  const [skuList, setSkuList]           = useState<SkuBasic[]>([])
-  const [selectedSku, setSelectedSku]   = useState(initSku)
-  const [currentStock, setCurrentStock] = useState(0)
+  const [selectedSku, setSelectedSku]     = useState(initSku)
+  const [selectedSkuData, setSelectedSkuData] = useState<SkuBasic | null>(null)
+  const [inputValue, setInputValue]       = useState(initSku)
+  const [suggestions, setSuggestions]     = useState<SkuBasic[]>([])
+  const [showDropdown, setShowDropdown]   = useState(false)
+  const [currentStock, setCurrentStock]   = useState(0)
+  const wrapperRef = useRef<HTMLDivElement>(null)
   const [leadTime, setLeadTime]         = useState(14)
   const [safetyDays, setSafetyDays]     = useState(7)
   const [coverageDays, setCoverage]     = useState(21)
@@ -32,17 +37,56 @@ function MoPhongContent() {
 
   const slMultiplier = { conservative: 1.65, balanced: 1.28, aggressive: 0.84 }[serviceLevel]
 
-  // Load SKU list (top 200 by demand for the selector)
+  // Load SKU ban đầu từ URL param
   useEffect(() => {
-    fetch('/api/skus?sort=forecast_56d_total&dir=desc&limit=200')
-      .then(r => r.json()).then(d => {
-        setSkuList(d.rows)
-        if (!initSku && d.rows.length > 0) setSelectedSku(d.rows[0].ItemCode)
-      })
+    if (!initSku) {
+      // Không có param → load SKU nhu cầu cao nhất làm mặc định
+      fetch('/api/skus?sort=forecast_56d_total&dir=desc&limit=1')
+        .then(r => r.json()).then(d => {
+          if (d.rows?.[0]) {
+            setSelectedSku(d.rows[0].ItemCode)
+            setSelectedSkuData(d.rows[0])
+            setInputValue(d.rows[0].ItemCode)
+          }
+        })
+    } else {
+      fetch(`/api/skus?search=${encodeURIComponent(initSku)}&limit=1`)
+        .then(r => r.json()).then(d => {
+          if (d.rows?.[0]) setSelectedSkuData(d.rows[0])
+        })
+    }
   }, [initSku])
 
-  const skuData = skuList.find(s => s.ItemCode === selectedSku)
-  const afpd    = skuData?.avg_forecast_per_day ?? 0
+  // Tìm kiếm SKU theo input (debounce 250ms)
+  useEffect(() => {
+    if (inputValue.length < 2) { setSuggestions([]); return }
+    const timer = setTimeout(() => {
+      fetch(`/api/skus?search=${encodeURIComponent(inputValue)}&limit=8&sort=forecast_56d_total&dir=desc`)
+        .then(r => r.json())
+        .then(d => { setSuggestions(d.rows ?? []); setShowDropdown(true) })
+    }, 250)
+    return () => clearTimeout(timer)
+  }, [inputValue])
+
+  // Đóng dropdown khi click ra ngoài
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node))
+        setShowDropdown(false)
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [])
+
+  function selectSku(sku: SkuBasic) {
+    setSelectedSku(sku.ItemCode)
+    setSelectedSkuData(sku)
+    setInputValue(sku.ItemCode)
+    setShowDropdown(false)
+    setSuggestions([])
+  }
+
+  const afpd = selectedSkuData?.avg_forecast_per_day ?? 0
   // Nhu cầu đã điều chỉnh theo hệ số người dùng nhập
   const afpdAdj = afpd * demandAdj
 
@@ -87,22 +131,53 @@ function MoPhongContent() {
         {/* ── Controls ── */}
         <div className="space-y-4">
 
-          {/* SKU selector */}
+          {/* SKU selector — combobox */}
           <div className="bg-white rounded-lg border border-slate-200 p-5">
-            <h3 className="text-sm font-semibold text-slate-700 mb-4">Chọn mã SKU</h3>
-            <select
-              value={selectedSku}
-              onChange={e => setSelectedSku(e.target.value)}
-              className="w-full py-2 px-3 text-sm border border-slate-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
-            >
-              {skuList.map(s => (
-                <option key={s.ItemCode} value={s.ItemCode}>{s.ItemCode}</option>
-              ))}
-            </select>
-            {skuData && (
-              <div className="mt-3 flex gap-2 flex-wrap">
-                <StatusBadge value={skuData.recommended_action} type="action" />
-                <StatusBadge value={skuData._status} type="status" />
+            <h3 className="text-sm font-semibold text-slate-700 mb-3">Nhập mã SKU</h3>
+            <div ref={wrapperRef} className="relative">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+              <input
+                type="text"
+                value={inputValue}
+                onChange={e => { setInputValue(e.target.value); setShowDropdown(true) }}
+                onFocus={() => { if (suggestions.length > 0) setShowDropdown(true) }}
+                onKeyDown={e => {
+                  if (e.key === 'Enter' && suggestions[0]) selectSku(suggestions[0])
+                  if (e.key === 'Escape') setShowDropdown(false)
+                }}
+                placeholder="VD: SKU-09760"
+                className="w-full pl-8 pr-3 py-2 text-sm font-mono border border-slate-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+
+              {/* Dropdown gợi ý */}
+              {showDropdown && suggestions.length > 0 && (
+                <div className="absolute z-20 top-full mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-lg overflow-hidden">
+                  {suggestions.map(s => (
+                    <button
+                      key={s.ItemCode}
+                      onMouseDown={() => selectSku(s)}
+                      className="w-full px-3 py-2.5 text-left hover:bg-blue-50 transition-colors border-b border-slate-50 last:border-0"
+                    >
+                      <span className="text-sm font-mono font-medium text-slate-800">{s.ItemCode}</span>
+                      <span className="ml-2 text-xs text-slate-400">
+                        {s.forecast_56d_total > 0
+                          ? `DB 56 ngày: ${s.forecast_56d_total.toFixed(0)} units`
+                          : 'Không có dự báo'}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Badge trạng thái SKU đang chọn */}
+            {selectedSkuData && (
+              <div className="mt-3 space-y-1.5">
+                <p className="text-xs text-slate-400">Đang xem: <span className="font-mono font-medium text-slate-700">{selectedSku}</span></p>
+                <div className="flex gap-2 flex-wrap">
+                  <StatusBadge value={selectedSkuData.recommended_action} type="action" />
+                  <StatusBadge value={selectedSkuData._status} type="status" />
+                </div>
               </div>
             )}
           </div>
@@ -257,7 +332,7 @@ function MoPhongContent() {
                       Điều chỉnh: {afpdAdj.toFixed(2)} units/ngày
                     </p>
                   )}
-                  <p>Dự báo 56 ngày: {Math.round(afpdAdj * 56).toLocaleString()} units</p>
+                  <p>Dự báo 56 ngày: {Math.round(selectedSkuData?.forecast_56d_total ?? afpdAdj * 56).toLocaleString()} units</p>
                 </div>
               )}
             </div>
