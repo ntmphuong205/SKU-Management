@@ -6,13 +6,13 @@ const BASE = 'https://generativelanguage.googleapis.com/v1beta'
 
 // Thứ tự ưu tiên model — tự động fallback nếu model không khả dụng
 const MODEL_CANDIDATES = [
+  'gemini-2.5-flash',
+  'gemini-2.5-flash-lite',
+  'gemini-3.5-flash',
   'gemini-2.0-flash',
+  'gemini-2.0-flash-001',
   'gemini-2.0-flash-lite',
-  'gemini-1.5-flash-latest',
-  'gemini-1.5-flash',
-  'gemini-1.5-flash-001',
-  'gemini-1.5-pro',
-  'gemini-pro',
+  'gemini-flash-latest',
 ]
 
 let _resolvedModel: string | null = null
@@ -216,7 +216,7 @@ ${contextData}`
       body: JSON.stringify({
         system_instruction: { parts: [{ text: systemPrompt }] },
         contents,
-        generationConfig: { temperature: 0.2, maxOutputTokens: 1024 },
+        generationConfig: { temperature: 0.2, maxOutputTokens: 1024, thinkingConfig: { thinkingBudget: 0 } },
       }),
     })
 
