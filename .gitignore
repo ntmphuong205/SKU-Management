@@ -30,6 +30,9 @@ dashboard/.env
 dashboard/.env.local
 dashboard/.env.*.local
 
+# dashboard/data/ CSVs are committed (needed for Vercel serverless)
+!dashboard/data/
+
 # ── Editor / OS ──────────────────────────────────────────────
 .DS_Store
 .idea/

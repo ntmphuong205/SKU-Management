@@ -3,7 +3,7 @@ import path from 'path'
 import Papa from 'papaparse'
 import type { SkuRow, MonthlyTrend } from './types'
 
-const PROCESSED_DIR = path.resolve(process.cwd(), '..', 'processed')
+const PROCESSED_DIR = path.join(process.cwd(), 'data')
 
 function readCsv<T>(filename: string): T[] {
   const filePath = path.join(PROCESSED_DIR, filename)
