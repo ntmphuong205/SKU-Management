@@ -7,7 +7,7 @@ data/train.csv
 data/sample_submission.csv
 data/submission_*.csv
 
-# Processed (generated — chạy prepare_data.py để tạo lại)
+# Processed (generated — chạy pipeline/prepare_data.py để tạo lại)
 processed/
 
 # ── Python ───────────────────────────────────────────────────
@@ -21,6 +21,9 @@ venv/
 *.egg-info/
 dist/
 build/
+
+# ── Streamlit ────────────────────────────────────────────────
+.streamlit/
 
 # ── Next.js / Node ───────────────────────────────────────────
 dashboard/node_modules/

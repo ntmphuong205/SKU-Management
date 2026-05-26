@@ -586,8 +586,10 @@ def main(data_dir: Path, out_dir: Path) -> None:
 
 
 if __name__ == "__main__":
+    # Mặc định: data/ và processed/ nằm ở thư mục gốc project (một cấp trên pipeline/)
+    _root = Path(__file__).parent.parent
     parser = argparse.ArgumentParser(description="Prepare data for AutoParts Forecast Intelligence Platform")
-    parser.add_argument("--data-dir", type=Path, default=Path("data"))
-    parser.add_argument("--out-dir", type=Path, default=Path("processed"))
+    parser.add_argument("--data-dir", type=Path, default=_root / "data")
+    parser.add_argument("--out-dir",  type=Path, default=_root / "processed")
     args = parser.parse_args()
     main(args.data_dir, args.out_dir)
