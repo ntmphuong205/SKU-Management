@@ -1,0 +1,224 @@
+'use client'
+
+import { useEffect, useState, useCallback } from 'react'
+import { AlertTriangle, Download } from 'lucide-react'
+import StatusBadge from '@/components/StatusBadge'
+import { ACTION_LABEL } from '@/lib/types'
+
+interface Row {
+  ItemCode: string
+  profit_segment: string
+  demand_class: string
+  forecast_28d_validation: number
+  forecast_56d_total: number
+  _status: string
+  _reorder: number
+  recommended_action: string
+  reason_codes: string
+  days_since_last_sale: number
+  return_ratio: number
+}
+
+const URGENT_ACTIONS = [
+  'Prioritize replenishment',
+  'Review with Sales',
+  'Manual review required',
+  'Check return/quality issue',
+  'Review slow-moving stock',
+]
+
+export default function CanhBao() {
+  const [rows, setRows]   = useState<Row[]>([])
+  const [total, setTotal] = useState(0)
+  const [loading, setLoading] = useState(true)
+  const [page, setPage]   = useState(1)
+  const [actionFilter, setActionFilter] = useState('')
+  const LIMIT = 30
+
+  const load = useCallback(() => {
+    setLoading(true)
+    const params = new URLSearchParams({
+      sort: 'forecast_56d_total', dir: 'desc',
+      limit: String(LIMIT), page: String(page),
+    })
+    if (actionFilter) params.set('action', actionFilter)
+
+    fetch(`/api/skus?${params}`)
+      .then(r => r.json())
+      .then(d => {
+        // Filter to only actionable rows
+        const filtered = d.rows.filter((r: Row) => URGENT_ACTIONS.includes(r.recommended_action))
+        setRows(filtered)
+        setTotal(d.total)
+        setLoading(false)
+      })
+  }, [page, actionFilter])
+
+  useEffect(() => { load() }, [load])
+
+  const actionOptions = [
+    { value: '',                             label: 'Tất cả hành động' },
+    { value: 'Prioritize replenishment',     label: 'Nhập hàng ngay' },
+    { value: 'Review with Sales',            label: 'Cần xem xét' },
+    { value: 'Check return/quality issue',   label: 'Kiểm tra hoàn hàng' },
+    { value: 'Review slow-moving stock',     label: 'Hàng tồn chậm' },
+  ]
+
+  const counts = {
+    urgent:  rows.filter(r => r.recommended_action === 'Prioritize replenishment').length,
+    review:  rows.filter(r => ['Review with Sales','Manual review required'].includes(r.recommended_action)).length,
+    returns: rows.filter(r => r.recommended_action === 'Check return/quality issue').length,
+    slow:    rows.filter(r => r.recommended_action === 'Review slow-moving stock').length,
+  }
+
+  function rowBg(r: Row) {
+    if (r.recommended_action === 'Prioritize replenishment') return 'bg-red-50 hover:bg-red-100'
+    if (['Review with Sales','Manual review required'].includes(r.recommended_action)) return 'bg-amber-50 hover:bg-amber-100'
+    if (r.recommended_action === 'Check return/quality issue') return 'bg-purple-50 hover:bg-purple-100'
+    if (r.recommended_action === 'Review slow-moving stock') return 'bg-sky-50 hover:bg-sky-100'
+    return 'hover:bg-slate-50'
+  }
+
+  function reasonVN(raw: string): string {
+    return raw
+      .replace('Only ', 'Chỉ ').replace(' sale days in last 180 days', ' ngày bán trong 180 ngày qua')
+      .replace('Last sale was ', 'Bán cuối cách ').replace(' days ago', ' ngày')
+      .replace('High return ratio:', 'Tỷ lệ hoàn hàng:')
+      .replace('Dormant SKU — no sale in last 180 days', 'Không giao dịch 180 ngày qua')
+      .replace('Frequent recent sales', 'Bán thường xuyên').replace('Stable model agreement', 'Dự báo ổn định')
+      .replace('High profit SKU: top 10%', 'SKU lợi nhuận cao (top 10%)')
+  }
+
+  return (
+    <div className="p-6 space-y-5">
+      {/* Header */}
+      <div className="border-b border-slate-200 pb-4">
+        <h1 className="text-xl font-semibold text-slate-800">Cảnh báo & Hành động</h1>
+        <p className="text-sm text-slate-500 mt-0.5">Danh sách SKU cần xử lý — sắp xếp theo mức độ ưu tiên</p>
+      </div>
+
+      {/* Summary counts */}
+      <div className="grid grid-cols-4 gap-3">
+        {[
+          { label: '🔴 Nhập hàng ngay',      count: counts.urgent,  bg: 'bg-red-50 border-red-200 text-red-800'      },
+          { label: '🟡 Cần xem xét',          count: counts.review,  bg: 'bg-amber-50 border-amber-200 text-amber-800'  },
+          { label: '🟣 Kiểm tra hoàn hàng',   count: counts.returns, bg: 'bg-purple-50 border-purple-200 text-purple-800'},
+          { label: '🔵 Hàng tồn chậm',        count: counts.slow,    bg: 'bg-sky-50 border-sky-200 text-sky-800'       },
+        ].map(s => (
+          <div key={s.label} className={`rounded-lg border px-4 py-3 ${s.bg}`}>
+            <p className="text-xs font-medium">{s.label}</p>
+            <p className="text-2xl font-bold mt-0.5">{s.count}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Filter bar */}
+      <div className="flex items-center gap-3 bg-white rounded-lg border border-slate-200 px-4 py-3">
+        <AlertTriangle size={15} className="text-slate-400 shrink-0" />
+        <span className="text-sm text-slate-500 shrink-0">Lọc theo hành động:</span>
+        <div className="flex gap-2 flex-wrap">
+          {actionOptions.map(o => (
+            <button
+              key={o.value}
+              onClick={() => { setActionFilter(o.value); setPage(1) }}
+              className={`px-3 py-1 text-xs rounded-full border transition-colors ${
+                actionFilter === o.value
+                  ? 'bg-slate-800 text-white border-slate-800'
+                  : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-50'
+              }`}
+            >
+              {o.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Legend */}
+      <div className="flex gap-4 text-xs text-slate-500">
+        <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-red-100 inline-block border border-red-200"/>Nhập hàng ngay</span>
+        <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-amber-100 inline-block border border-amber-200"/>Cần xem xét</span>
+        <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-purple-100 inline-block border border-purple-200"/>Kiểm tra hoàn hàng</span>
+        <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-sky-100 inline-block border border-sky-200"/>Hàng tồn chậm</span>
+      </div>
+
+      {/* Table */}
+      <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-slate-50 border-b border-slate-200">
+              <tr>
+                {['Mã SKU','Phân khúc','Xu hướng','Dự báo 28 ngày','Dự báo 56 ngày',
+                  'Cần đặt thêm','Trạng thái','Hành động','Lý do'].map(h => (
+                  <th key={h} className="px-3 py-2.5 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wide whitespace-nowrap">
+                    {h}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {loading ? (
+                <tr><td colSpan={9} className="px-3 py-8 text-center text-sm text-slate-400">Đang tải…</td></tr>
+              ) : rows.length === 0 ? (
+                <tr><td colSpan={9} className="px-3 py-8 text-center text-sm text-slate-400">Không có dữ liệu</td></tr>
+              ) : rows.map(r => (
+                <tr key={r.ItemCode} className={`text-sm transition-colors ${rowBg(r)}`}>
+                  <td className="px-3 py-2.5 font-mono font-medium text-slate-800 whitespace-nowrap">
+                    {r.ItemCode}
+                  </td>
+                  <td className="px-3 py-2.5 whitespace-nowrap">
+                    <StatusBadge value={r.profit_segment} type="profit" />
+                  </td>
+                  <td className="px-3 py-2.5 whitespace-nowrap">
+                    <StatusBadge value={r.demand_class} type="demand" />
+                  </td>
+                  <td className="px-3 py-2.5 text-right font-medium text-slate-700 whitespace-nowrap">
+                    {r.forecast_28d_validation?.toLocaleString(undefined,{maximumFractionDigits:1})}
+                  </td>
+                  <td className="px-3 py-2.5 text-right font-medium text-slate-700 whitespace-nowrap">
+                    {r.forecast_56d_total?.toLocaleString(undefined,{maximumFractionDigits:1})}
+                  </td>
+                  <td className="px-3 py-2.5 text-right font-semibold text-red-700 whitespace-nowrap">
+                    {r._reorder > 0 ? r._reorder.toLocaleString(undefined,{maximumFractionDigits:0}) : '—'}
+                  </td>
+                  <td className="px-3 py-2.5 whitespace-nowrap">
+                    <StatusBadge value={r._status} type="status" />
+                  </td>
+                  <td className="px-3 py-2.5 whitespace-nowrap">
+                    <StatusBadge value={r.recommended_action} type="action" />
+                  </td>
+                  <td className="px-3 py-2.5 text-xs text-slate-500 max-w-xs">
+                    <div className="flex flex-col gap-0.5">
+                      {r.reason_codes?.split(' | ').slice(0,2).map((rc,i) => (
+                        <span key={i}>• {reasonVN(rc)}</span>
+                      ))}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Pagination */}
+        <div className="flex items-center justify-between px-4 py-3 border-t border-slate-100 bg-slate-50">
+          <span className="text-xs text-slate-500">
+            Hiển thị {rows.length} SKU cần hành động
+          </span>
+          <div className="flex gap-1">
+            <button onClick={() => setPage(p => Math.max(1, p-1))} disabled={page === 1}
+              className="px-2.5 py-1 text-xs border border-slate-200 rounded hover:bg-white disabled:opacity-40">
+              ← Trước
+            </button>
+            <span className="px-3 py-1 text-xs bg-white border border-slate-200 rounded font-medium">
+              {page}
+            </span>
+            <button onClick={() => setPage(p => p+1)} disabled={rows.length < LIMIT}
+              className="px-2.5 py-1 text-xs border border-slate-200 rounded hover:bg-white disabled:opacity-40">
+              Sau →
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}

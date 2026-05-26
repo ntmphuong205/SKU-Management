@@ -1,0 +1,10 @@
+@import "tailwindcss";
+
+* { box-sizing: border-box; }
+
+body {
+  background: #f8fafc;
+  color: #1e293b;
+}
+
+table { border-collapse: collapse; width: 100%; }

@@ -1,0 +1,39 @@
+# ── Dữ liệu lớn (không commit) ──────────────────────────────
+hbaac-round2-2/
+archive/
+
+# Data CSV (symlinks hoặc file thật — để locally)
+data/train.csv
+data/sample_submission.csv
+data/submission_*.csv
+
+# Processed (generated — chạy prepare_data.py để tạo lại)
+processed/
+
+# ── Python ───────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+.Python
+.env
+.venv
+venv/
+*.egg-info/
+dist/
+build/
+
+# ── Next.js / Node ───────────────────────────────────────────
+dashboard/node_modules/
+dashboard/.next/
+dashboard/out/
+dashboard/.env
+dashboard/.env.local
+dashboard/.env.*.local
+
+# ── Editor / OS ──────────────────────────────────────────────
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.swo
+Thumbs.db
