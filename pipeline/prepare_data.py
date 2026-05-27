@@ -465,20 +465,21 @@ def main(data_dir: Path, out_dir: Path) -> None:
     train = load_train(data_dir)
 
     print("📊 Loading forecast files …")
+    f_v115 = load_forecast(data_dir / "submission_v115.csv")
     f_v22 = load_forecast(data_dir / "submission_v22.csv")
     f_v19 = load_forecast(data_dir / "submission_v19.csv")
     f_v6 = load_forecast(data_dir / "submission_v6.csv")
     f_v2 = load_forecast(data_dir / "submission_v2.csv")
     f_v16 = load_forecast(data_dir / "submission_v16.csv")
 
-    # Pick best available forecast as primary
+    # Pick best available forecast as primary — v115 là bản tốt nhất trên Kaggle
     def _first_valid(*dfs):
         for d in dfs:
             if d is not None and not d.empty:
                 return d
         return None
 
-    primary = _first_valid(f_v22, f_v19, f_v6, f_v2, f_v16)
+    primary = _first_valid(f_v115, f_v22, f_v19, f_v6, f_v2, f_v16)
     if primary is None:
         raise RuntimeError("No forecast file found. Please add at least one submission_*.csv to data/")
 
@@ -494,8 +495,10 @@ def main(data_dir: Path, out_dir: Path) -> None:
     sku["avg_forecast_per_day"] = sku["avg_forecast_per_day"].fillna(0)
 
     print("📐 Computing model disagreement …")
-    dis = compute_disagreement(f_v19, f_v6, f_v2, f_v22, sku["ItemCode"].tolist())
-    # Use v19_v6 as primary disagreement signal; fall back to v19_v22
+    # v115 là primary; dùng v22 hoặc v6 làm challenger để tính disagreement
+    ref_forecast = f_v115 if f_v115 is not None else f_v19
+    dis = compute_disagreement(ref_forecast, f_v6, f_v2, f_v22, sku["ItemCode"].tolist())
+    # Use v19_v6 (hoặc v115_v6) as primary disagreement signal; fall back to v19_v22
     if "disagreement_v19_v6_56d" in dis.columns:
         dis["model_disagreement"] = dis["disagreement_v19_v6_56d"].fillna(0)
     elif "disagreement_v19_v22_56d" in dis.columns:

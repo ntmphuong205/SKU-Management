@@ -96,7 +96,7 @@ def load_train_daily() -> pd.DataFrame | None:
 
 @st.cache_data(show_spinner=False)
 def load_forecast_file() -> pd.DataFrame | None:
-    for fname in ["submission_v22.csv", "submission_v19.csv",
+    for fname in ["submission_v115.csv", "submission_v22.csv", "submission_v19.csv",
                   "submission_v6.csv", "submission_v2.csv"]:
         p = DATA_DIR / fname
         if p.exists():
