@@ -76,7 +76,22 @@ export function enrichSku(s: SkuRow, lt: number, ss: number, cov: number) {
   else if (overstock) status = 'overstock'
   else status = 'normal'
 
+  // ── Intelligence badges ──────────────────────────────────────
+  const badges: string[] = []
+  const hist = s.avg_daily_sales_180 || 0
+  if (hist > 0 && afpd > 0) {
+    const ratio = afpd / hist
+    if (ratio >= 1.5)                    badges.push('demand_spike')
+    else if (ratio >= 1.2)               badges.push('emerging_trend')
+  }
+  if (s.demand_class === 'Dormant')      badges.push('dormant')
+  if (
+    s.reliability_tag === 'Low Reliability' ||
+    s.reliability_tag === 'Insufficient History'
+  )                                      badges.push('low_reliability')
+  if (s.return_ratio > 0.1 || s.return_heavy) badges.push('high_return')
+
   return { ...s, _stock: stock, _ltDemand: ltDemand, _ssDemand: ssDemand,
            _proj: proj, _stockout: stockout, _overstock: overstock,
-           _reorder: reorder, _status: status }
+           _reorder: reorder, _status: status, _badges: badges }
 }

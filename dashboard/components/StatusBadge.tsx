@@ -1,6 +1,6 @@
-import { ACTION_LABEL, DEMAND_LABEL, PROFIT_LABEL } from '@/lib/types'
+import { ACTION_LABEL, DEMAND_LABEL, PROFIT_LABEL, RELIABILITY_LABEL, BADGE_CONFIG } from '@/lib/types'
 
-type BadgeVariant = 'action' | 'demand' | 'profit' | 'status' | 'raw'
+type BadgeVariant = 'action' | 'demand' | 'profit' | 'status' | 'reliability' | 'raw'
 
 interface Props {
   value: string
@@ -46,6 +46,14 @@ function getProfitStyle(p: string) {
   return 'bg-slate-100 text-slate-600 border-slate-200'
 }
 
+function getReliabilityStyle(r: string) {
+  if (r === 'High Reliability')     return 'bg-green-100 text-green-800 border-green-200'
+  if (r === 'Medium Reliability')   return 'bg-yellow-100 text-yellow-800 border-yellow-200'
+  if (r === 'Low Reliability')      return 'bg-red-100 text-red-700 border-red-200'
+  if (r === 'Insufficient History') return 'bg-slate-100 text-slate-500 border-slate-300'
+  return 'bg-slate-100 text-slate-600 border-slate-200'
+}
+
 export default function StatusBadge({ value, type = 'raw' }: Props) {
   let label = value
   let style = 'bg-slate-100 text-slate-600 border-slate-200'
@@ -64,11 +72,35 @@ export default function StatusBadge({ value, type = 'raw' }: Props) {
           : value === 'overstock' ? 'Tồn kho dư'
           : 'Bình thường'
     style = getStatusStyle(value)
+  } else if (type === 'reliability') {
+    label = RELIABILITY_LABEL[value] ?? value
+    style = getReliabilityStyle(value)
   }
 
   return (
     <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${style}`}>
       {label}
     </span>
+  )
+}
+
+/** Hiển thị danh sách intelligence badges từ mảng badge keys */
+export function IntelBadges({ badges }: { badges: string[] }) {
+  if (!badges || badges.length === 0) return null
+  return (
+    <div className="flex flex-wrap gap-1">
+      {badges.map(key => {
+        const cfg = BADGE_CONFIG[key]
+        if (!cfg) return null
+        return (
+          <span
+            key={key}
+            className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold border ${cfg.cls}`}
+          >
+            {cfg.label}
+          </span>
+        )
+      })}
+    </div>
   )
 }

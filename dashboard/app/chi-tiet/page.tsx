@@ -3,8 +3,9 @@
 import { useEffect, useState, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { Search } from 'lucide-react'
-import StatusBadge from '@/components/StatusBadge'
+import StatusBadge, { IntelBadges } from '@/components/StatusBadge'
 import KpiCard from '@/components/KpiCard'
+import { RELIABILITY_LABEL } from '@/lib/types'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, Legend,
@@ -28,10 +29,12 @@ interface SkuDetail {
   avg_forecast_per_day: number
   recommended_action: string
   reason_codes: string
+  reliability_tag: string
   _status: string
   _reorder: number
   _stock: number
   _ltDemand: number
+  _badges: string[]
 }
 
 const REASON_MAP: Record<string, string> = {
@@ -134,17 +137,33 @@ function ChiTietContent() {
       {sku && (
         <div className="space-y-5">
           {/* Action banner */}
-          <div className={`rounded-lg border-2 px-5 py-4 flex items-center justify-between ${actionBg[sku.recommended_action] ?? 'bg-green-50 border-green-300 text-green-800'}`}>
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wide opacity-70">Hành động đề xuất</p>
-              <p className="text-lg font-bold mt-0.5">
-                <StatusBadge value={sku.recommended_action} type="action" />
-              </p>
+          <div className={`rounded-lg border-2 px-5 py-4 ${actionBg[sku.recommended_action] ?? 'bg-green-50 border-green-300 text-green-800'}`}>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide opacity-70">Hành động đề xuất</p>
+                <p className="text-lg font-bold mt-0.5">
+                  <StatusBadge value={sku.recommended_action} type="action" />
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2 justify-end">
+                <StatusBadge value={sku.profit_segment} type="profit" />
+                <StatusBadge value={sku.demand_class}   type="demand" />
+                <StatusBadge value={sku._status}        type="status" />
+              </div>
             </div>
-            <div className="flex gap-3">
-              <StatusBadge value={sku.profit_segment} type="profit" />
-              <StatusBadge value={sku.demand_class}   type="demand" />
-              <StatusBadge value={sku._status}         type="status" />
+
+            {/* Forecast Intelligence row */}
+            <div className="mt-3 pt-3 border-t border-black/10 flex items-center gap-4 flex-wrap">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-semibold opacity-60 uppercase tracking-wide">Độ tin cậy dự báo</span>
+                <StatusBadge value={sku.reliability_tag} type="reliability" />
+              </div>
+              {sku._badges?.length > 0 && (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-semibold opacity-60 uppercase tracking-wide">Tín hiệu</span>
+                  <IntelBadges badges={sku._badges} />
+                </div>
+              )}
             </div>
           </div>
 

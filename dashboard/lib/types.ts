@@ -53,6 +53,23 @@ export interface KpiSummary {
   dormant_skus: number
 }
 
+// Reliability labels
+export const RELIABILITY_LABEL: Record<string, string> = {
+  'High Reliability':      'Tin cậy cao',
+  'Medium Reliability':    'Tin cậy trung bình',
+  'Low Reliability':       'Tin cậy thấp',
+  'Insufficient History':  'Thiếu lịch sử',
+}
+
+// Intelligence badge config
+export const BADGE_CONFIG: Record<string, { label: string; cls: string }> = {
+  demand_spike:    { label: '⚡ Demand Spike',    cls: 'bg-orange-100 text-orange-800 border-orange-200' },
+  emerging_trend:  { label: '📈 Emerging Trend',  cls: 'bg-emerald-100 text-emerald-800 border-emerald-200' },
+  dormant:         { label: '💤 Dormant SKU',      cls: 'bg-slate-100 text-slate-500 border-slate-300' },
+  low_reliability: { label: '⚠️ Low Reliability',  cls: 'bg-red-100 text-red-700 border-red-200' },
+  high_return:     { label: '↩️ High Return Risk', cls: 'bg-purple-100 text-purple-800 border-purple-200' },
+}
+
 // Vietnamese business labels
 export const ACTION_LABEL: Record<string, string> = {
   'Prioritize replenishment': 'Nhập hàng ngay',

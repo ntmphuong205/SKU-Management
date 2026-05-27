@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { Search, Download } from 'lucide-react'
-import StatusBadge from '@/components/StatusBadge'
+import StatusBadge, { IntelBadges } from '@/components/StatusBadge'
 import Link from 'next/link'
 
 interface Row {
@@ -16,6 +16,8 @@ interface Row {
   _reorder: number
   _status: string
   recommended_action: string
+  reliability_tag: string
+  _badges: string[]
 }
 
 const LIMIT = 50
@@ -180,6 +182,7 @@ export default function DanhSach() {
                   <SortBtn col="forecast_56d_total" label="DB 56 ngày" />
                 </th>
                 <th className="px-3 py-2.5 text-left text-[11px] text-slate-500">Trạng thái</th>
+                <th className="px-3 py-2.5 text-left text-[11px] text-slate-500">Độ tin cậy</th>
                 <th className="px-3 py-2.5 text-left text-[11px] text-slate-500">Hành động</th>
                 <th className="px-3 py-2.5 text-[11px] text-slate-500">Chi tiết</th>
               </tr>
@@ -212,6 +215,12 @@ export default function DanhSach() {
                   </td>
                   <td className="px-3 py-2.5 whitespace-nowrap">
                     <StatusBadge value={r._status} type="status" />
+                  </td>
+                  <td className="px-3 py-2.5 whitespace-nowrap">
+                    <div className="flex flex-col gap-1">
+                      <StatusBadge value={r.reliability_tag} type="reliability" />
+                      {r._badges?.length > 0 && <IntelBadges badges={r._badges} />}
+                    </div>
                   </td>
                   <td className="px-3 py-2.5 whitespace-nowrap">
                     <StatusBadge value={r.recommended_action} type="action" />

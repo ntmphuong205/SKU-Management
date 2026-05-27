@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { AlertTriangle, Download } from 'lucide-react'
 import Link from 'next/link'
-import StatusBadge from '@/components/StatusBadge'
+import StatusBadge, { IntelBadges } from '@/components/StatusBadge'
 import { ACTION_LABEL } from '@/lib/types'
 
 interface Row {
@@ -14,11 +14,13 @@ interface Row {
   forecast_56d_total: number
   _status: string
   _reorder: number
-  reorder_qty: number       // pre-calculated by pipeline (dùng thay _reorder)
+  reorder_qty: number
   recommended_action: string
   reason_codes: string
   days_since_last_sale: number
   return_ratio: number
+  reliability_tag: string
+  _badges: string[]
 }
 
 const URGENT_ACTIONS = [
@@ -39,7 +41,6 @@ export default function CanhBao() {
   const [countsLoaded, setCountsLoaded] = useState(false)
   const LIMIT = 30
 
-  // Fetch global totals once — independent of current filter/page
   useEffect(() => {
     async function fetchCounts() {
       const [urgentRes, reviewRes, returnsRes, slowRes] = await Promise.all([
@@ -64,14 +65,14 @@ export default function CanhBao() {
     const params = new URLSearchParams({
       sort: 'forecast_56d_total', dir: 'desc',
       limit: String(LIMIT), page: String(page),
-      actionable: 'true',   // lọc server-side trước khi phân trang
+      actionable: 'true',
     })
     if (actionFilter) params.set('action', actionFilter)
 
     fetch(`/api/skus?${params}`)
       .then(r => r.json())
       .then(d => {
-        setRows(d.rows)     // không cần filter client-side nữa
+        setRows(d.rows)
         setTotal(d.total)
         setLoading(false)
       })
@@ -87,8 +88,6 @@ export default function CanhBao() {
     { value: 'Review slow-moving stock',     label: 'Hàng tồn chậm' },
   ]
 
-  // counts derived from paginated rows — kept for reference but summary cards use totalCounts
-
   async function handleExport() {
     const params = new URLSearchParams({ sort: 'forecast_56d_total', dir: 'desc', limit: '10000', actionable: 'true' })
     if (actionFilter) params.set('action', actionFilter)
@@ -96,9 +95,10 @@ export default function CanhBao() {
     const exportRows: Row[] = data.rows as Row[]
 
     const headers = ['Mã SKU', 'Phân khúc lợi nhuận', 'Xu hướng bán', 'Dự báo 28 ngày', 'Dự báo 56 ngày',
-      'Đề xuất đặt (28 ngày)', 'Trạng thái tồn kho', 'Hành động đề xuất', 'Lý do']
+      'Đề xuất đặt (28 ngày)', 'Độ tin cậy', 'Trạng thái tồn kho', 'Hành động đề xuất', 'Lý do']
     const keys: (keyof Row)[] = ['ItemCode', 'profit_segment', 'demand_class',
-      'forecast_28d_validation', 'forecast_56d_total', 'forecast_28d_validation', '_status', 'recommended_action', 'reason_codes']
+      'forecast_28d_validation', 'forecast_56d_total', 'forecast_28d_validation',
+      'reliability_tag', '_status', 'recommended_action', 'reason_codes']
 
     const esc = (v: unknown) => { const s = String(v ?? ''); return s.includes(',') || s.includes('"') ? `"${s.replace(/"/g, '""')}"` : s }
     const csv = [headers.join(','), ...exportRows.map(r => keys.map(k => esc(r[k])).join(','))].join('\n')
@@ -144,13 +144,13 @@ export default function CanhBao() {
         </button>
       </div>
 
-      {/* Summary counts — always show global totals, independent of current filter */}
+      {/* Summary counts */}
       <div className="grid grid-cols-4 gap-3">
         {[
-          { label: '🔴 Nhập hàng ngay',      count: totalCounts.urgent,   bg: 'bg-red-50 border-red-200 text-red-800',        action: 'Prioritize replenishment'   },
-          { label: '🟡 Cần xem xét',          count: totalCounts.review,   bg: 'bg-amber-50 border-amber-200 text-amber-800',  action: 'Review with Sales'          },
-          { label: '🟣 Kiểm tra hoàn hàng',   count: totalCounts.returns,  bg: 'bg-purple-50 border-purple-200 text-purple-800', action: 'Check return/quality issue'},
-          { label: '🔵 Hàng tồn chậm',        count: totalCounts.slow,     bg: 'bg-sky-50 border-sky-200 text-sky-800',        action: 'Review slow-moving stock'   },
+          { label: '🔴 Nhập hàng ngay',      count: totalCounts.urgent,   bg: 'bg-red-50 border-red-200 text-red-800',           action: 'Prioritize replenishment'   },
+          { label: '🟡 Cần xem xét',          count: totalCounts.review,   bg: 'bg-amber-50 border-amber-200 text-amber-800',     action: 'Review with Sales'          },
+          { label: '🟣 Kiểm tra hoàn hàng',   count: totalCounts.returns,  bg: 'bg-purple-50 border-purple-200 text-purple-800',  action: 'Check return/quality issue' },
+          { label: '🔵 Hàng tồn chậm',        count: totalCounts.slow,     bg: 'bg-sky-50 border-sky-200 text-sky-800',           action: 'Review slow-moving stock'   },
         ].map(s => (
           <button
             key={s.label}
@@ -199,20 +199,19 @@ export default function CanhBao() {
             <colgroup>
               <col className="w-28" />   {/* Mã SKU */}
               <col className="w-32" />   {/* Phân khúc */}
-              <col className="w-36" />   {/* Xu hướng */}
-              <col className="w-28" />   {/* Dự báo 28 ngày */}
-              <col className="w-28" />   {/* Dự báo 56 ngày */}
-              <col className="w-32" />   {/* Đề xuất đặt */}
-              <col className="w-32" />   {/* Trạng thái */}
+              <col className="w-28" />   {/* DB 28 ngày */}
+              <col className="w-28" />   {/* DB 56 ngày */}
+              <col className="w-28" />   {/* Đề xuất đặt */}
+              <col className="w-36" />   {/* Độ tin cậy */}
               <col className="w-36" />   {/* Hành động */}
-              <col />                    {/* Lý do — chiếm phần còn lại */}
+              <col />                    {/* Tín hiệu / Lý do */}
             </colgroup>
             <thead className="bg-slate-50 border-b border-slate-200">
               <tr>
                 {[
-                  'Mã SKU', 'Phân khúc', 'Xu hướng',
+                  'Mã SKU', 'Phân khúc',
                   'Dự báo 28 ngày', 'Dự báo 56 ngày', 'Đề xuất đặt (28 ngày)',
-                  'Trạng thái', 'Hành động', 'Lý do',
+                  'Độ tin cậy', 'Hành động', 'Tín hiệu & Lý do',
                 ].map(h => (
                   <th key={h} className="px-3 py-2.5 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wide">
                     {h}
@@ -222,9 +221,9 @@ export default function CanhBao() {
             </thead>
             <tbody className="divide-y divide-slate-100">
               {loading ? (
-                <tr><td colSpan={9} className="px-3 py-8 text-center text-sm text-slate-400">Đang tải…</td></tr>
+                <tr><td colSpan={8} className="px-3 py-8 text-center text-sm text-slate-400">Đang tải…</td></tr>
               ) : rows.length === 0 ? (
-                <tr><td colSpan={9} className="px-3 py-8 text-center text-sm text-slate-400">Không có dữ liệu</td></tr>
+                <tr><td colSpan={8} className="px-3 py-8 text-center text-sm text-slate-400">Không có dữ liệu</td></tr>
               ) : rows.map(r => (
                 <tr key={r.ItemCode} className={`text-sm transition-colors ${rowBg(r)}`}>
                   <td className="px-3 py-2.5 font-mono font-medium">
@@ -233,10 +232,10 @@ export default function CanhBao() {
                     </Link>
                   </td>
                   <td className="px-3 py-2.5">
-                    <StatusBadge value={r.profit_segment} type="profit" />
-                  </td>
-                  <td className="px-3 py-2.5">
-                    <StatusBadge value={r.demand_class} type="demand" />
+                    <div className="flex flex-col gap-1">
+                      <StatusBadge value={r.profit_segment} type="profit" />
+                      <StatusBadge value={r.demand_class} type="demand" />
+                    </div>
                   </td>
                   <td className="px-3 py-2.5 text-right font-medium text-slate-700">
                     {r.forecast_28d_validation?.toLocaleString(undefined,{maximumFractionDigits:1})}
@@ -253,13 +252,20 @@ export default function CanhBao() {
                       : <span className="text-slate-400">—</span>}
                   </td>
                   <td className="px-3 py-2.5">
-                    <StatusBadge value={r._status} type="status" />
+                    <StatusBadge value={r.reliability_tag} type="reliability" />
                   </td>
                   <td className="px-3 py-2.5">
                     <StatusBadge value={r.recommended_action} type="action" />
                   </td>
-                  <td className="px-3 py-2.5 text-xs text-slate-500">
-                    <div className="flex flex-col gap-0.5">
+                  <td className="px-3 py-2.5">
+                    {/* Intelligence badges */}
+                    {r._badges?.length > 0 && (
+                      <div className="mb-1.5">
+                        <IntelBadges badges={r._badges} />
+                      </div>
+                    )}
+                    {/* Reason text */}
+                    <div className="flex flex-col gap-0.5 text-xs text-slate-500">
                       {r.reason_codes?.split(' | ').map((rc, i) => (
                         <span key={i}>• {reasonVN(rc)}</span>
                       ))}
@@ -274,7 +280,7 @@ export default function CanhBao() {
         {/* Pagination */}
         <div className="flex items-center justify-between px-4 py-3 border-t border-slate-100 bg-slate-50">
           <span className="text-xs text-slate-500">
-            Hiển thị {rows.length} SKU cần hành động
+            Hiển thị {rows.length} / {total} SKU cần hành động
           </span>
           <div className="flex gap-1">
             <button onClick={() => setPage(p => Math.max(1, p-1))} disabled={page === 1}

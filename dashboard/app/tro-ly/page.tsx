@@ -21,11 +21,11 @@ Bạn có thể hỏi tôi bằng ngôn ngữ tự nhiên, ví dụ:
 Bạn muốn biết gì?`
 
 const QUICK_PROMPTS = [
-  { label: '🔴 SKU cần nhập ngay', text: 'Danh sách top 5 SKU cần nhập hàng ngay?' },
-  { label: '📦 Tồn kho dư', text: 'Những SKU nào đang bị tồn kho dư?' },
-  { label: '📊 Tổng quan', text: 'Cho tôi tổng quan tình hình tồn kho và dự báo hiện tại' },
-  { label: '💰 Lợi nhuận cao', text: 'Top SKU có lợi nhuận cao nhất là gì?' },
-  { label: '📈 Nhu cầu lớn', text: 'Top 5 SKU có nhu cầu cao nhất 56 ngày tới?' },
+  { label: '🔴 Rủi ro cao nhất',    text: 'Top 10 SKU có rủi ro cao nhất cần xử lý ngay hôm nay?' },
+  { label: '⚡ Cần nhập gấp',        text: 'SKU nào đang cần nhập hàng gấp trong tuần này?' },
+  { label: '📉 Reliability thấp',   text: 'Những SKU nào có forecast reliability thấp nhất? Tại sao không đáng tin?' },
+  { label: '📈 Demand spike',        text: 'SKU nào đang có demand spike — nhu cầu tăng đột biến so với lịch sử?' },
+  { label: '📦 Tồn kho dư',          text: 'Tồn kho nào đang dư thừa cần giải phóng? Ưu tiên SKU lợi nhuận cao.' },
 ]
 
 function MessageBubble({ msg }: { msg: Message }) {

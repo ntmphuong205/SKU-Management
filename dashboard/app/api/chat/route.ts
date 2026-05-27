@@ -110,7 +110,7 @@ SKU: ${e.ItemCode}
   // ── Top SKU cần nhập ngay ──
   const needsUrgent = lower.includes('hết hàng') || lower.includes('nhập hàng') ||
     lower.includes('khẩn') || lower.includes('ưu tiên') || lower.includes('cần đặt') ||
-    lower.includes('thiếu hàng') || lower.includes('cảnh báo')
+    lower.includes('thiếu hàng') || lower.includes('cảnh báo') || lower.includes('nhập gấp')
 
   if (needsUrgent || skuCodes.length === 0) {
     const urgent = skus
@@ -121,9 +121,65 @@ SKU: ${e.ItemCode}
     if (urgent.length > 0) {
       ctx += `\n[TOP SKU CẦN NHẬP HÀNG NGAY (sắp xếp theo lợi nhuận)]\n`
       urgent.forEach((s, i) => {
-        ctx += `${i + 1}. ${s.ItemCode} — Lợi nhuận: ${(s.profit / 1e6).toFixed(0)}M đ | Cần đặt: ${s._reorder.toFixed(0)} units | ${s.profit_segment}\n`
+        ctx += `${i + 1}. ${s.ItemCode} — Lợi nhuận: ${(s.profit / 1e6).toFixed(0)}M đ | Cần đặt: ${s._reorder.toFixed(0)} units | ${s.profit_segment} | Độ tin cậy: ${s.reliability_tag}\n`
       })
     }
+  }
+
+  // ── Rủi ro cao / P1 ──
+  const needsRisk = lower.includes('rủi ro') || lower.includes('risk') || lower.includes('nguy hiểm') ||
+    lower.includes('p1') || lower.includes('khẩn cấp')
+
+  if (needsRisk) {
+    const risky = skus
+      .map(s => enrichSku(s, 14, 7, 21))
+      .filter(s => s.priority_level === 'P1 — Urgent Review' || s.risk_level === 'High Risk')
+      .sort((a, b) => (b.profit || 0) - (a.profit || 0))
+      .slice(0, 10)
+    ctx += `\n[TOP SKU RỦI RO CAO (P1 / High Risk)]\n`
+    risky.forEach((s, i) => {
+      ctx += `${i + 1}. ${s.ItemCode} — ${s.risk_level} | ${s.profit_segment} | Độ tin cậy: ${s.reliability_tag} | ${s.recommended_action}\n`
+    })
+  }
+
+  // ── Forecast Reliability thấp ──
+  const needsReliability = lower.includes('reliability') || lower.includes('tin cậy') ||
+    lower.includes('không đáng tin') || lower.includes('low reliability') || lower.includes('thiếu lịch sử')
+
+  if (needsReliability) {
+    const lowRel = skus
+      .filter(s => s.reliability_tag === 'Low Reliability' || s.reliability_tag === 'Insufficient History')
+      .filter(s => s.forecast_56d_total > 0)
+      .sort((a, b) => b.forecast_56d_total - a.forecast_56d_total)
+      .slice(0, 10)
+    ctx += `\n[TOP SKU FORECAST RELIABILITY THẤP (có dự báo nhưng kém tin cậy)]\n`
+    lowRel.forEach((s, i) => {
+      ctx += `${i + 1}. ${s.ItemCode} — ${s.reliability_tag} | Dự báo: ${s.forecast_56d_total.toFixed(0)} units | ${s.demand_class} | Lý do: ${s.reason_codes?.split(' | ')[0]}\n`
+    })
+  }
+
+  // ── Demand Spike ──
+  const needsSpike = lower.includes('spike') || lower.includes('đột biến') ||
+    lower.includes('tăng mạnh') || lower.includes('tăng đột') || lower.includes('emerging')
+
+  if (needsSpike) {
+    const spiked = skus
+      .filter(s => {
+        const hist = s.avg_daily_sales_180 || 0
+        const fore = s.avg_forecast_per_day || 0
+        return hist > 0 && fore / hist >= 1.5
+      })
+      .sort((a, b) => {
+        const ratioA = (a.avg_forecast_per_day || 0) / (a.avg_daily_sales_180 || 1)
+        const ratioB = (b.avg_forecast_per_day || 0) / (b.avg_daily_sales_180 || 1)
+        return ratioB - ratioA
+      })
+      .slice(0, 10)
+    ctx += `\n[TOP SKU DEMAND SPIKE (dự báo > 1.5× lịch sử gần nhất)]\n`
+    spiked.forEach((s, i) => {
+      const ratio = ((s.avg_forecast_per_day || 0) / (s.avg_daily_sales_180 || 1)).toFixed(1)
+      ctx += `${i + 1}. ${s.ItemCode} — Ratio: ×${ratio} | Dự báo: ${s.forecast_56d_total.toFixed(0)} units | ${s.profit_segment} | ${s.demand_class}\n`
+    })
   }
 
   // ── Top nhu cầu cao nhất ──
@@ -136,12 +192,13 @@ SKU: ${e.ItemCode}
       .slice(0, 10)
     ctx += `\n[TOP 10 SKU NHU CẦU CAO NHẤT (56 ngày)]\n`
     top.forEach((s, i) => {
-      ctx += `${i + 1}. ${s.ItemCode} — ${s.forecast_56d_total.toFixed(0)} units | ${s.profit_segment} | ${s.demand_class}\n`
+      ctx += `${i + 1}. ${s.ItemCode} — ${s.forecast_56d_total.toFixed(0)} units | ${s.profit_segment} | ${s.demand_class} | Tin cậy: ${s.reliability_tag}\n`
     })
   }
 
   // ── Tồn kho dư ──
-  if (lower.includes('tồn kho dư') || lower.includes('over') || lower.includes('dư hàng') || lower.includes('ứ đọng')) {
+  if (lower.includes('tồn kho dư') || lower.includes('over') || lower.includes('dư hàng') ||
+      lower.includes('ứ đọng') || lower.includes('dư thừa') || lower.includes('giải phóng')) {
     const over = skus
       .map(s => enrichSku(s, 14, 7, 21))
       .filter(s => s._overstock)
