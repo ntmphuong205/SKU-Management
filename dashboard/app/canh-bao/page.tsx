@@ -244,10 +244,13 @@ export default function CanhBao() {
                   <td className="px-3 py-2.5 text-right font-medium text-slate-700">
                     {r.forecast_56d_total?.toLocaleString(undefined,{maximumFractionDigits:1})}
                   </td>
-                  <td className="px-3 py-2.5 text-right font-semibold text-red-700">
-                    {r.recommended_action === 'Prioritize replenishment' && r.forecast_28d_validation > 0
-                      ? r.forecast_28d_validation.toLocaleString(undefined, {maximumFractionDigits: 0})
-                      : '—'}
+                  <td className="px-3 py-2.5 text-right font-semibold">
+                    {r.forecast_28d_validation > 0 &&
+                     ['Prioritize replenishment', 'Review with Sales', 'Manual review required'].includes(r.recommended_action)
+                      ? <span className={r.recommended_action === 'Prioritize replenishment' ? 'text-red-700' : 'text-amber-600'}>
+                          {r.forecast_28d_validation.toLocaleString(undefined, {maximumFractionDigits: 0})}
+                        </span>
+                      : <span className="text-slate-400">—</span>}
                   </td>
                   <td className="px-3 py-2.5">
                     <StatusBadge value={r._status} type="status" />
