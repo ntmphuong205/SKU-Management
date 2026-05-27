@@ -34,7 +34,29 @@ export default function CanhBao() {
   const [loading, setLoading] = useState(true)
   const [page, setPage]   = useState(1)
   const [actionFilter, setActionFilter] = useState('')
+  const [totalCounts, setTotalCounts] = useState({ urgent: 0, review: 0, returns: 0, slow: 0 })
+  const [countsLoaded, setCountsLoaded] = useState(false)
   const LIMIT = 30
+
+  // Fetch global totals once — independent of current filter/page
+  useEffect(() => {
+    async function fetchCounts() {
+      const [urgentRes, reviewRes, returnsRes, slowRes] = await Promise.all([
+        fetch('/api/skus?action=Prioritize+replenishment&limit=1').then(r => r.json()),
+        fetch('/api/skus?action=Review+with+Sales&limit=1').then(r => r.json()),
+        fetch('/api/skus?action=Check+return%2Fquality+issue&limit=1').then(r => r.json()),
+        fetch('/api/skus?action=Review+slow-moving+stock&limit=1').then(r => r.json()),
+      ])
+      setTotalCounts({
+        urgent:  urgentRes.total  ?? 0,
+        review:  reviewRes.total  ?? 0,
+        returns: returnsRes.total ?? 0,
+        slow:    slowRes.total    ?? 0,
+      })
+      setCountsLoaded(true)
+    }
+    fetchCounts()
+  }, [])
 
   const load = useCallback(() => {
     setLoading(true)
@@ -65,12 +87,7 @@ export default function CanhBao() {
     { value: 'Review slow-moving stock',     label: 'Hàng tồn chậm' },
   ]
 
-  const counts = {
-    urgent:  rows.filter(r => r.recommended_action === 'Prioritize replenishment').length,
-    review:  rows.filter(r => ['Review with Sales','Manual review required'].includes(r.recommended_action)).length,
-    returns: rows.filter(r => r.recommended_action === 'Check return/quality issue').length,
-    slow:    rows.filter(r => r.recommended_action === 'Review slow-moving stock').length,
-  }
+  // counts derived from paginated rows — kept for reference but summary cards use totalCounts
 
   async function handleExport() {
     const params = new URLSearchParams({ sort: 'forecast_56d_total', dir: 'desc', limit: '10000' })
@@ -127,18 +144,22 @@ export default function CanhBao() {
         </button>
       </div>
 
-      {/* Summary counts */}
+      {/* Summary counts — always show global totals, independent of current filter */}
       <div className="grid grid-cols-4 gap-3">
         {[
-          { label: '🔴 Nhập hàng ngay',      count: counts.urgent,  bg: 'bg-red-50 border-red-200 text-red-800'      },
-          { label: '🟡 Cần xem xét',          count: counts.review,  bg: 'bg-amber-50 border-amber-200 text-amber-800'  },
-          { label: '🟣 Kiểm tra hoàn hàng',   count: counts.returns, bg: 'bg-purple-50 border-purple-200 text-purple-800'},
-          { label: '🔵 Hàng tồn chậm',        count: counts.slow,    bg: 'bg-sky-50 border-sky-200 text-sky-800'       },
+          { label: '🔴 Nhập hàng ngay',      count: totalCounts.urgent,   bg: 'bg-red-50 border-red-200 text-red-800',        action: 'Prioritize replenishment'   },
+          { label: '🟡 Cần xem xét',          count: totalCounts.review,   bg: 'bg-amber-50 border-amber-200 text-amber-800',  action: 'Review with Sales'          },
+          { label: '🟣 Kiểm tra hoàn hàng',   count: totalCounts.returns,  bg: 'bg-purple-50 border-purple-200 text-purple-800', action: 'Check return/quality issue'},
+          { label: '🔵 Hàng tồn chậm',        count: totalCounts.slow,     bg: 'bg-sky-50 border-sky-200 text-sky-800',        action: 'Review slow-moving stock'   },
         ].map(s => (
-          <div key={s.label} className={`rounded-lg border px-4 py-3 ${s.bg}`}>
+          <button
+            key={s.label}
+            onClick={() => { setActionFilter(s.action === actionFilter ? '' : s.action); setPage(1) }}
+            className={`rounded-lg border px-4 py-3 text-left transition-all ${s.bg} ${actionFilter === s.action ? 'ring-2 ring-offset-1 ring-slate-400' : 'hover:opacity-80'}`}
+          >
             <p className="text-xs font-medium">{s.label}</p>
-            <p className="text-2xl font-bold mt-0.5">{s.count}</p>
-          </div>
+            <p className="text-2xl font-bold mt-0.5">{countsLoaded ? s.count : '…'}</p>
+          </button>
         ))}
       </div>
 
