@@ -63,15 +63,14 @@ export default function CanhBao() {
     const params = new URLSearchParams({
       sort: 'forecast_56d_total', dir: 'desc',
       limit: String(LIMIT), page: String(page),
+      actionable: 'true',   // lọc server-side trước khi phân trang
     })
     if (actionFilter) params.set('action', actionFilter)
 
     fetch(`/api/skus?${params}`)
       .then(r => r.json())
       .then(d => {
-        // Filter to only actionable rows
-        const filtered = d.rows.filter((r: Row) => URGENT_ACTIONS.includes(r.recommended_action))
-        setRows(filtered)
+        setRows(d.rows)     // không cần filter client-side nữa
         setTotal(d.total)
         setLoading(false)
       })
@@ -90,10 +89,10 @@ export default function CanhBao() {
   // counts derived from paginated rows — kept for reference but summary cards use totalCounts
 
   async function handleExport() {
-    const params = new URLSearchParams({ sort: 'forecast_56d_total', dir: 'desc', limit: '10000' })
+    const params = new URLSearchParams({ sort: 'forecast_56d_total', dir: 'desc', limit: '10000', actionable: 'true' })
     if (actionFilter) params.set('action', actionFilter)
     const data = await fetch(`/api/skus?${params}`).then(r => r.json())
-    const exportRows: Row[] = (data.rows as Row[]).filter(r => URGENT_ACTIONS.includes(r.recommended_action))
+    const exportRows: Row[] = data.rows as Row[]
 
     const headers = ['Mã SKU', 'Phân khúc lợi nhuận', 'Xu hướng bán', 'Dự báo 28 ngày', 'Dự báo 56 ngày',
       'Cần đặt thêm', 'Trạng thái tồn kho', 'Hành động đề xuất', 'Lý do']

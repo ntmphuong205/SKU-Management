@@ -10,7 +10,8 @@ export async function GET(req: NextRequest) {
   const status = searchParams.get('status')        ?? ''
   const profit = searchParams.get('profit')        ?? ''
   const demand = searchParams.get('demand')        ?? ''
-  const action = searchParams.get('action')        ?? ''
+  const action     = searchParams.get('action')     ?? ''
+  const actionable = searchParams.get('actionable') === 'true'
   const page   = Number(searchParams.get('page')   ?? 1)
   const limit  = Number(searchParams.get('limit')  ?? 50)
   const sort   = searchParams.get('sort')          ?? 'forecast_56d_total'
@@ -31,6 +32,13 @@ export async function GET(req: NextRequest) {
   }
   if (demand) {
     rows = rows.filter(r => r.demand_class === demand)
+  }
+  const URGENT_ACTIONS = [
+    'Prioritize replenishment', 'Review with Sales', 'Manual review required',
+    'Check return/quality issue', 'Review slow-moving stock',
+  ]
+  if (actionable) {
+    rows = rows.filter(r => URGENT_ACTIONS.includes(r.recommended_action))
   }
   if (action) {
     rows = rows.filter(r => r.recommended_action === action)
