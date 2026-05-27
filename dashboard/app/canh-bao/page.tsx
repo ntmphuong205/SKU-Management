@@ -14,6 +14,7 @@ interface Row {
   forecast_56d_total: number
   _status: string
   _reorder: number
+  reorder_qty: number       // pre-calculated by pipeline (dùng thay _reorder)
   recommended_action: string
   reason_codes: string
   days_since_last_sale: number
@@ -97,7 +98,7 @@ export default function CanhBao() {
     const headers = ['Mã SKU', 'Phân khúc lợi nhuận', 'Xu hướng bán', 'Dự báo 28 ngày', 'Dự báo 56 ngày',
       'Cần đặt thêm', 'Trạng thái tồn kho', 'Hành động đề xuất', 'Lý do']
     const keys: (keyof Row)[] = ['ItemCode', 'profit_segment', 'demand_class',
-      'forecast_28d_validation', 'forecast_56d_total', '_reorder', '_status', 'recommended_action', 'reason_codes']
+      'forecast_28d_validation', 'forecast_56d_total', 'reorder_qty', '_status', 'recommended_action', 'reason_codes']
 
     const esc = (v: unknown) => { const s = String(v ?? ''); return s.includes(',') || s.includes('"') ? `"${s.replace(/"/g, '""')}"` : s }
     const csv = [headers.join(','), ...exportRows.map(r => keys.map(k => esc(r[k])).join(','))].join('\n')
@@ -230,7 +231,9 @@ export default function CanhBao() {
                     {r.forecast_56d_total?.toLocaleString(undefined,{maximumFractionDigits:1})}
                   </td>
                   <td className="px-3 py-2.5 text-right font-semibold text-red-700 whitespace-nowrap">
-                    {r._reorder > 0 ? r._reorder.toLocaleString(undefined,{maximumFractionDigits:0}) : '—'}
+                    {(r.reorder_qty ?? r._reorder) > 0
+                      ? (r.reorder_qty ?? r._reorder).toLocaleString(undefined, {maximumFractionDigits: 0})
+                      : '—'}
                   </td>
                   <td className="px-3 py-2.5 whitespace-nowrap">
                     <StatusBadge value={r._status} type="status" />
