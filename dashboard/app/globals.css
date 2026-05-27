@@ -1,10 +1,47 @@
 @import "tailwindcss";
 
-* { box-sizing: border-box; }
+*, *::before, *::after { box-sizing: border-box; }
 
+/* ── Body ────────────────────────────────────────────────────── */
 body {
-  background: #f8fafc;
-  color: #1e293b;
+  background: #f1f5f9;
+  color: #0f172a;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
+/* ── Selection ───────────────────────────────────────────────── */
+::selection {
+  background: #2563eb22;
+  color: #1e40af;
+}
+
+/* ── Scrollbar ───────────────────────────────────────────────── */
+::-webkit-scrollbar          { width: 6px; height: 6px; }
+::-webkit-scrollbar-track    { background: transparent; }
+::-webkit-scrollbar-thumb    { background: #cbd5e1; border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+/* ── Table ───────────────────────────────────────────────────── */
 table { border-collapse: collapse; width: 100%; }
+
+/* ── Animated gradient text ─────────────────────────────────── */
+.gradient-text {
+  background: linear-gradient(135deg, #2563eb, #0ea5e9);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ── Glass card ─────────────────────────────────────────────── */
+.glass {
+  background: rgba(255,255,255,0.75);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255,255,255,0.6);
+}
+
+/* ── Sidebar gradient ───────────────────────────────────────── */
+.sidebar-bg {
+  background: linear-gradient(180deg, #0f172a 0%, #0c1220 100%);
+}

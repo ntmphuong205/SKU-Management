@@ -164,7 +164,7 @@ export default function CanhBao() {
       </div>
 
       {/* Filter bar */}
-      <div className="flex items-center gap-3 bg-white rounded-lg border border-slate-200 px-4 py-3">
+      <div className="flex items-center gap-3 bg-white rounded-xl border border-slate-100 shadow-sm shadow-slate-200/50 px-4 py-3">
         <AlertTriangle size={15} className="text-slate-400 shrink-0" />
         <span className="text-sm text-slate-500 shrink-0">Lọc theo hành động:</span>
         <div className="flex gap-2 flex-wrap">
@@ -193,7 +193,7 @@ export default function CanhBao() {
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">
+      <div className="bg-white rounded-xl border border-slate-100 shadow-sm shadow-slate-200/50 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full table-fixed">
             <colgroup>
@@ -206,7 +206,7 @@ export default function CanhBao() {
               <col className="w-36" />   {/* Hành động */}
               <col />                    {/* Tín hiệu / Lý do */}
             </colgroup>
-            <thead className="bg-slate-50 border-b border-slate-200">
+            <thead className="bg-slate-50/80 border-b border-slate-100">
               <tr>
                 {[
                   'Mã SKU', 'Phân khúc',

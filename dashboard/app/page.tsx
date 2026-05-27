@@ -100,12 +100,53 @@ export default function TongQuan() {
   }))
 
   return (
-    <div className="p-6 space-y-6">
-      {/* Page header */}
-      <div className="border-b border-slate-200 pb-4">
-        <h1 className="text-xl font-semibold text-slate-800">Tổng quan</h1>
-        <p className="text-sm text-slate-500 mt-0.5">Tình trạng nhu cầu và tồn kho toàn bộ danh mục SKU</p>
+    <div className="space-y-6">
+
+      {/* ── Hero banner ─────────────────────────────────────────── */}
+      <div className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900 px-8 pt-8 pb-6">
+        {/* Background grid pattern */}
+        <div className="absolute inset-0 opacity-10"
+          style={{
+            backgroundImage:
+              'linear-gradient(rgba(99,179,237,0.15) 1px, transparent 1px), linear-gradient(90deg, rgba(99,179,237,0.15) 1px, transparent 1px)',
+            backgroundSize: '32px 32px',
+          }}
+        />
+        {/* Glow */}
+        <div className="absolute top-0 left-1/3 w-96 h-32 bg-blue-600/20 blur-3xl pointer-events-none" />
+
+        <div className="relative z-10 flex flex-wrap items-end justify-between gap-6">
+          {/* Left — title */}
+          <div>
+            <div className="inline-flex items-center gap-2 bg-blue-500/15 border border-blue-500/20 rounded-full px-3 py-1 mb-3">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="text-xs font-medium text-blue-300">Dự báo đang chạy · F1–F56</span>
+            </div>
+            <h1 className="text-2xl font-bold text-white leading-tight">
+              Demand Forecast Intelligence
+            </h1>
+            <p className="text-slate-400 text-sm mt-1">
+              Phụ tùng ô tô · 15,972 SKU · Dữ liệu 2020–2025
+            </p>
+          </div>
+
+          {/* Right — headline KPIs */}
+          <div className="flex gap-6 flex-wrap">
+            {[
+              { label: 'Dự báo 56 ngày',     value: kpis ? fmt(kpis.total_forecast_56d) : '—', unit: 'units', color: 'text-blue-300' },
+              { label: 'SKU cần nhập ngay',   value: kpis ? kpis.action_urgent.toString() : '—', unit: 'SKU', color: 'text-red-400' },
+              { label: 'SKU đang hoạt động',  value: kpis ? kpis.active_skus.toLocaleString() : '—', unit: 'SKU', color: 'text-emerald-400' },
+            ].map(k => (
+              <div key={k.label} className="text-right">
+                <p className={`text-3xl font-bold tabular-nums ${k.color}`}>{k.value}</p>
+                <p className="text-xs text-slate-500 mt-0.5">{k.unit} · {k.label}</p>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
+
+      <div className="px-6 space-y-6 pb-8">
 
       {/* KPI Row 1 — Dự báo */}
       <div>
@@ -143,7 +184,7 @@ export default function TongQuan() {
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
 
         {/* Monthly trend — ComposedChart (bar qty + line revenue) */}
-        <div className="lg:col-span-3 bg-white rounded-lg border border-slate-200 p-5">
+        <div className="lg:col-span-3 bg-white rounded-xl border border-slate-100 shadow-sm shadow-slate-200/50 p-5">
           <h3 className="text-sm font-semibold text-slate-700 mb-1">Xu hướng bán hàng theo tháng</h3>
           <p className="text-xs text-slate-400 mb-4">Số lượng bán (cột) và doanh thu (đường)</p>
           <ResponsiveContainer width="100%" height={220}>
@@ -172,7 +213,7 @@ export default function TongQuan() {
         </div>
 
         {/* Top 10 SKU */}
-        <div className="lg:col-span-2 bg-white rounded-lg border border-slate-200 p-5">
+        <div className="lg:col-span-2 bg-white rounded-xl border border-slate-100 shadow-sm shadow-slate-200/50 p-5">
           <h3 className="text-sm font-semibold text-slate-700 mb-1">Top 10 SKU — Nhu cầu cao nhất</h3>
           <p className="text-xs text-slate-400 mb-4">Dự báo 56 ngày tới</p>
           <div className="space-y-2">
@@ -214,7 +255,7 @@ export default function TongQuan() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
 
           {/* Pie — Demand class */}
-          <div className="bg-white rounded-lg border border-slate-200 p-5">
+          <div className="bg-white rounded-xl border border-slate-100 shadow-sm shadow-slate-200/50 p-5">
             <h3 className="text-sm font-semibold text-slate-700 mb-1">Phân bố xu hướng bán</h3>
             <p className="text-xs text-slate-400 mb-2">Tỉ lệ SKU theo loại nhu cầu</p>
             <ResponsiveContainer width="100%" height={200}>
@@ -240,7 +281,7 @@ export default function TongQuan() {
           </div>
 
           {/* Horizontal bar — Revenue by profit segment */}
-          <div className="bg-white rounded-lg border border-slate-200 p-5">
+          <div className="bg-white rounded-xl border border-slate-100 shadow-sm shadow-slate-200/50 p-5">
             <h3 className="text-sm font-semibold text-slate-700 mb-1">Doanh thu theo phân khúc</h3>
             <p className="text-xs text-slate-400 mb-2">Doanh thu & lợi nhuận (triệu đồng)</p>
             <ResponsiveContainer width="100%" height={200}>
@@ -265,7 +306,7 @@ export default function TongQuan() {
           </div>
 
           {/* Horizontal bar — Reliability breakdown */}
-          <div className="bg-white rounded-lg border border-slate-200 p-5">
+          <div className="bg-white rounded-xl border border-slate-100 shadow-sm shadow-slate-200/50 p-5">
             <h3 className="text-sm font-semibold text-slate-700 mb-1">Đặc điểm nhu cầu SKU</h3>
             <p className="text-xs text-slate-400 mb-2">Phân bố theo mức độ ổn định nhu cầu</p>
             <ResponsiveContainer width="100%" height={200}>
@@ -289,7 +330,7 @@ export default function TongQuan() {
       </div>
 
       {/* ── Business summary ─────────────────────────────────────── */}
-      <div className="bg-white rounded-lg border border-slate-200 p-5">
+      <div className="bg-white rounded-xl border border-slate-100 shadow-sm shadow-slate-200/50 p-5">
         <h3 className="text-sm font-semibold text-slate-700 mb-1">Hiệu quả kinh doanh lịch sử</h3>
         <p className="text-xs text-slate-400 mb-4">Tổng hợp từ dữ liệu giao dịch 2020–2025</p>
         <div className="grid grid-cols-4 gap-6">
@@ -321,6 +362,8 @@ export default function TongQuan() {
           </div>
         </div>
       </div>
+
+      </div> {/* /px-6 wrapper */}
     </div>
   )
 }

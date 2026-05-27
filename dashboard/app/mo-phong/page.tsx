@@ -132,7 +132,7 @@ function MoPhongContent() {
         <div className="space-y-4">
 
           {/* SKU selector — combobox */}
-          <div className="bg-white rounded-lg border border-slate-200 p-5">
+          <div className="bg-white rounded-xl border border-slate-100 shadow-sm shadow-slate-200/50 p-5">
             <h3 className="text-sm font-semibold text-slate-700 mb-3">Nhập mã SKU</h3>
             <div ref={wrapperRef} className="relative">
               <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
@@ -183,7 +183,7 @@ function MoPhongContent() {
           </div>
 
           {/* Demand adjustment — tính năng điều chỉnh dự báo */}
-          <div className="bg-white rounded-lg border border-slate-200 p-5 space-y-3">
+          <div className="bg-white rounded-xl border border-slate-100 shadow-sm shadow-slate-200/50 p-5 space-y-3">
             <h3 className="text-sm font-semibold text-slate-700">Điều chỉnh dự báo nhu cầu</h3>
 
             <div>
@@ -241,7 +241,7 @@ function MoPhongContent() {
           </div>
 
           {/* Inventory parameters */}
-          <div className="bg-white rounded-lg border border-slate-200 p-5 space-y-4">
+          <div className="bg-white rounded-xl border border-slate-100 shadow-sm shadow-slate-200/50 p-5 space-y-4">
             <h3 className="text-sm font-semibold text-slate-700">Tham số tồn kho</h3>
 
             <div>
@@ -347,7 +347,7 @@ function MoPhongContent() {
           </div>
 
           {/* Projection chart */}
-          <div className="bg-white rounded-lg border border-slate-200 p-5">
+          <div className="bg-white rounded-xl border border-slate-100 shadow-sm shadow-slate-200/50 p-5">
             <h3 className="text-sm font-semibold text-slate-700 mb-1">
               Dự kiến tồn kho 56 ngày tới
               {isAdjusted && (

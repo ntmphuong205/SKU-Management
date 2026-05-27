@@ -258,7 +258,7 @@ function ChiTietContent() {
 
           <div className="grid grid-cols-3 gap-5">
             {/* Forecast chart */}
-            <div className="col-span-2 bg-white rounded-lg border border-slate-200 p-5">
+            <div className="col-span-2 bg-white rounded-xl border border-slate-100 shadow-sm shadow-slate-200/50 p-5">
               <h3 className="text-sm font-semibold text-slate-700 mb-1">Dự báo theo tuần — 56 ngày tới</h3>
               <p className="text-xs text-slate-400 mb-4">
                 Tháng đầu (F1–F28): {sku?.forecast_28d_validation.toLocaleString(undefined,{maximumFractionDigits:0})} units &nbsp;·&nbsp;
@@ -279,7 +279,7 @@ function ChiTietContent() {
 
             {/* Reason codes + revenue */}
             <div className="space-y-4">
-              <div className="bg-white rounded-lg border border-slate-200 p-4">
+              <div className="bg-white rounded-xl border border-slate-100 shadow-sm shadow-slate-200/50 p-4">
                 <h3 className="text-sm font-semibold text-slate-700 mb-3">Lý do đánh giá</h3>
                 <ul className="space-y-1.5">
                   {(sku.reason_codes ?? '').split(' | ').filter(Boolean).map((rc, i) => (
@@ -291,7 +291,7 @@ function ChiTietContent() {
                 </ul>
               </div>
 
-              <div className="bg-white rounded-lg border border-slate-200 p-4">
+              <div className="bg-white rounded-xl border border-slate-100 shadow-sm shadow-slate-200/50 p-4">
                 <h3 className="text-sm font-semibold text-slate-700 mb-3">Hiệu quả kinh doanh</h3>
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm">
