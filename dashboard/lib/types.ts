@@ -67,7 +67,7 @@ export const BADGE_CONFIG: Record<string, { label: string; cls: string }> = {
   emerging_trend:  { label: 'Xu hướng tăng',          cls: 'bg-emerald-100 text-emerald-800 border-emerald-200' },
   dormant:         { label: 'Không còn bán',           cls: 'bg-slate-100 text-slate-500 border-slate-300' },
   low_reliability: { label: 'Tin cậy thấp',            cls: 'bg-red-100 text-red-700 border-red-200' },
-  high_return:     { label: 'Rủi ro hoàn hàng',        cls: 'bg-purple-100 text-purple-800 border-purple-200' },
+  high_return:     { label: 'Tỷ lệ hoàn hàng cao',      cls: 'bg-purple-100 text-purple-800 border-purple-200' },
 }
 
 // Vietnamese business labels
