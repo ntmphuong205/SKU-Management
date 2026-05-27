@@ -55,10 +55,10 @@ export interface KpiSummary {
 
 // Reliability labels
 export const RELIABILITY_LABEL: Record<string, string> = {
-  'High Reliability':      'Dự báo tin cậy cao',
-  'Medium Reliability':    'Dự báo tin cậy trung bình',
-  'Low Reliability':       'Dự báo kém tin cậy',
-  'Insufficient History':  'Dự báo thiếu lịch sử',
+  'High Reliability':      'Nhu cầu ổn định',
+  'Medium Reliability':    'Nhu cầu gián đoạn',
+  'Low Reliability':       'Nhu cầu không ổn định',
+  'Insufficient History':  'Ít lịch sử bán',
 }
 
 // Intelligence badge config
@@ -66,7 +66,7 @@ export const BADGE_CONFIG: Record<string, { label: string; cls: string }> = {
   demand_spike:    { label: 'Nhu cầu tăng đột biến', cls: 'bg-orange-100 text-orange-800 border-orange-200' },
   emerging_trend:  { label: 'Xu hướng tăng',          cls: 'bg-emerald-100 text-emerald-800 border-emerald-200' },
   dormant:         { label: 'Không còn bán',           cls: 'bg-slate-100 text-slate-500 border-slate-300' },
-  low_reliability: { label: 'Dự báo kém tin cậy',       cls: 'bg-red-100 text-red-700 border-red-200' },
+  low_reliability: { label: 'Nhu cầu không ổn định',     cls: 'bg-red-100 text-red-700 border-red-200' },
   high_return:     { label: 'Tỷ lệ hoàn hàng cao',      cls: 'bg-purple-100 text-purple-800 border-purple-200' },
 }
 
