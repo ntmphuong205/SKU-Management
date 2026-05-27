@@ -43,5 +43,5 @@ table { border-collapse: collapse; width: 100%; }
 
 /* ── Sidebar gradient ───────────────────────────────────────── */
 .sidebar-bg {
-  background: linear-gradient(180deg, #0f172a 0%, #0c1220 100%);
+  background: #ffffff;
 }
