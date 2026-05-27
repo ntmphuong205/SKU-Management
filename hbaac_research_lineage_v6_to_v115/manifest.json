@@ -1,0 +1,17 @@
+{
+  "created_at": "2026-05-27T03:33:50.672079",
+  "lineage_versions": [
+    "v06",
+    "v19",
+    "v22",
+    "v36",
+    "v51",
+    "v60",
+    "v77",
+    "v85",
+    "v88",
+    "v89",
+    "v115"
+  ],
+  "purpose": "Curated reproducibility lineage from v6 to v115"
+}

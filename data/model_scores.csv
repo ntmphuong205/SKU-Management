@@ -1,8 +1,9 @@
 Version,Public WRMSSE,Private WRMSSE,Notes
+v6,0.50391,0.52101,Robust conservative baseline
 v19,0.48881,0.53214,Best Public — overfit Public
-v16,0.48926,0.52732,Best official selected Private
-v6,0.50391,0.52101,Robust private challenger
+v16,0.48926,0.52732,Official selected at submission
 v2,0.49334,0.52139,Conservative baseline
-v21,0.48881,0.52101,Public v19 + Private v6
-v23,0.48881,0.52081,Public v19 + Private 50% v6 + 50% v2
-v22,0.48881,0.52073,Best diagnostic: Public v19 + Private 70% v6 + 30% v2
+v22,0.48881,0.52073,Horizon ensemble: Public v19 + Private 70% v6 + 30% v2
+v60,0.48831,0.52059,Dual-improvement support-aware routing
+v85,0.48774,0.52023,Stronger recent-momentum trend model
+v115,0.48334,0.52023,Best: Public v89-extrap×15 + Private v85
