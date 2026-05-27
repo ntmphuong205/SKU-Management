@@ -55,6 +55,111 @@ interface ChatMessage {
   content: string
 }
 
+export interface ChartItem { label: string; value: number; color?: string }
+export interface ChartPayload { title: string; unit: string; items: ChartItem[] }
+
+function buildChartData(message: string, skus: ReturnType<typeof getSkuData>): ChartPayload | null {
+  const lower = message.toLowerCase()
+
+  // ── Top nhu cầu cao nhất ──────────────────────────────────────
+  if (lower.includes('top') || lower.includes('nhiều nhất') ||
+      lower.includes('cao nhất') || lower.includes('bán chạy') ||
+      lower.includes('nhu cầu lớn')) {
+    const top = [...skus]
+      .sort((a, b) => b.forecast_56d_total - a.forecast_56d_total)
+      .slice(0, 10)
+    return {
+      title: 'Top 10 SKU — Nhu cầu cao nhất (56 ngày)',
+      unit: 'units',
+      items: top.map(s => ({ label: s.ItemCode, value: Math.round(s.forecast_56d_total) })),
+    }
+  }
+
+  // ── Nhập hàng ngay ────────────────────────────────────────────
+  if (lower.includes('nhập hàng') || lower.includes('hết hàng') ||
+      lower.includes('nhập gấp') || lower.includes('ưu tiên') || lower.includes('cần đặt')) {
+    const urgent = skus
+      .map(s => enrichSku(s, 14, 7, 21))
+      .filter(s => s.recommended_action === 'Prioritize replenishment')
+      .sort((a, b) => (b.profit || 0) - (a.profit || 0))
+      .slice(0, 8)
+    return {
+      title: 'SKU cần nhập ngay (theo lợi nhuận)',
+      unit: 'units cần đặt',
+      items: urgent.map(s => ({ label: s.ItemCode, value: Math.round(s._reorder), color: '#ef4444' })),
+    }
+  }
+
+  // ── Demand spike ──────────────────────────────────────────────
+  if (lower.includes('spike') || lower.includes('đột biến') || lower.includes('tăng mạnh')) {
+    const spiked = skus
+      .filter(s => {
+        const hist = s.avg_daily_sales_180 || 0
+        const fore = s.avg_forecast_per_day || 0
+        return hist > 0 && fore / hist >= 1.5
+      })
+      .sort((a, b) => {
+        const ra = (a.avg_forecast_per_day || 0) / (a.avg_daily_sales_180 || 1)
+        const rb = (b.avg_forecast_per_day || 0) / (b.avg_daily_sales_180 || 1)
+        return rb - ra
+      })
+      .slice(0, 8)
+    return {
+      title: 'SKU Demand Spike — dự báo / lịch sử (×)',
+      unit: 'lần',
+      items: spiked.map(s => ({
+        label: s.ItemCode,
+        value: Math.round(((s.avg_forecast_per_day || 0) / (s.avg_daily_sales_180 || 1)) * 10) / 10,
+        color: '#f97316',
+      })),
+    }
+  }
+
+  // ── Rủi ro cao ────────────────────────────────────────────────
+  if (lower.includes('rủi ro') || lower.includes('risk') || lower.includes('khẩn cấp') || lower.includes('p1')) {
+    const risky = skus
+      .map(s => enrichSku(s, 14, 7, 21))
+      .filter(s => s.priority_level === 'P1 — Urgent Review' || s.risk_level === 'High Risk')
+      .sort((a, b) => (b.profit || 0) - (a.profit || 0))
+      .slice(0, 8)
+    return {
+      title: 'SKU rủi ro cao — Dự báo 56 ngày',
+      unit: 'units',
+      items: risky.map(s => ({ label: s.ItemCode, value: Math.round(s.forecast_56d_total), color: '#dc2626' })),
+    }
+  }
+
+  // ── Tồn kho dư ───────────────────────────────────────────────
+  if (lower.includes('tồn kho dư') || lower.includes('dư hàng') ||
+      lower.includes('dư thừa') || lower.includes('giải phóng')) {
+    const over = skus
+      .map(s => enrichSku(s, 14, 7, 21))
+      .filter(s => s._overstock)
+      .sort((a, b) => b._stock - a._stock)
+      .slice(0, 8)
+    return {
+      title: 'SKU tồn kho dư — Tồn ước tính',
+      unit: 'units',
+      items: over.map(s => ({ label: s.ItemCode, value: Math.round(s._stock), color: '#0891b2' })),
+    }
+  }
+
+  // ── Lợi nhuận cao ─────────────────────────────────────────────
+  if (lower.includes('lợi nhuận') || lower.includes('high profit')) {
+    const hp = skus
+      .filter(s => s.profit_segment === 'High Profit')
+      .sort((a, b) => (b.profit || 0) - (a.profit || 0))
+      .slice(0, 8)
+    return {
+      title: 'Top SKU lợi nhuận cao',
+      unit: 'triệu đ',
+      items: hp.map(s => ({ label: s.ItemCode, value: Math.round((s.profit || 0) / 1_000_000), color: '#22c55e' })),
+    }
+  }
+
+  return null
+}
+
 function buildContext(message: string) {
   const skus = getSkuData()
   const kpis = getKpiSummary(skus)
@@ -235,7 +340,9 @@ export async function POST(req: NextRequest) {
   const { message, history = [] }: { message: string; history: ChatMessage[] } = await req.json()
   if (!message?.trim()) return NextResponse.json({ reply: '' })
 
+  const skus = getSkuData()
   const contextData = buildContext(message)
+  const chartData = buildChartData(message, skus)
 
   const systemPrompt = `Bạn là trợ lý phân tích kinh doanh AI cho hệ thống quản lý phụ tùng ô tô.
 Nhiệm vụ: Giúp nhân viên kinh doanh và logistics truy vấn dữ liệu dự báo nhu cầu và tồn kho một cách nhanh chóng.
@@ -287,7 +394,7 @@ ${contextData}`
     const reply: string =
       data.candidates?.[0]?.content?.parts?.[0]?.text ?? 'Xin lỗi, không nhận được phản hồi từ AI.'
 
-    return NextResponse.json({ reply })
+    return NextResponse.json({ reply, chartData: chartData ?? undefined })
   } catch (err) {
     console.error('Chat error:', err)
     return NextResponse.json({ reply: '❌ Lỗi kết nối đến AI. Vui lòng thử lại.' })

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
-import { Search } from 'lucide-react'
+import { Search, Sparkles } from 'lucide-react'
 import StatusBadge, { IntelBadges } from '@/components/StatusBadge'
 import KpiCard from '@/components/KpiCard'
 import { RELIABILITY_LABEL } from '@/lib/types'
@@ -27,6 +27,7 @@ interface SkuDetail {
   forecast_28d_evaluation: number
   forecast_56d_total: number
   avg_forecast_per_day: number
+  avg_daily_sales_180: number
   recommended_action: string
   reason_codes: string
   reliability_tag: string
@@ -66,6 +67,17 @@ function fmt(n: number, unit = '') {
   return `${n.toLocaleString(undefined,{maximumFractionDigits:1})}${unit}`
 }
 
+function TypingDots() {
+  return (
+    <span className="flex gap-1 items-center h-4">
+      {[0, 150, 300].map(delay => (
+        <span key={delay} className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-bounce"
+          style={{ animationDelay: `${delay}ms` }} />
+      ))}
+    </span>
+  )
+}
+
 function ChiTietContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
@@ -76,10 +88,14 @@ function ChiTietContent() {
   const [loading, setLoading] = useState(false)
   const [notFound, setNotFound] = useState(false)
 
+  // ── AI explanation ────────────────────────────────────────────
+  const [aiText, setAiText]       = useState<string | null>(null)
+  const [aiLoading, setAiLoading] = useState(false)
+
   function doSearch(id: string) {
     if (!id) return
     router.replace(`/chi-tiet?sku=${id}`)
-    setLoading(true); setNotFound(false)
+    setLoading(true); setNotFound(false); setAiText(null)
     fetch(`/api/sku/${encodeURIComponent(id)}`).then(r => {
       if (!r.ok) { setNotFound(true); setLoading(false); return null }
       return r.json()
@@ -87,6 +103,32 @@ function ChiTietContent() {
   }
 
   useEffect(() => { if (skuParam) { setSearchInput(skuParam); doSearch(skuParam) } }, [skuParam])
+
+  // Auto AI explanation when SKU changes
+  useEffect(() => {
+    if (!sku) { setAiText(null); return }
+    setAiLoading(true); setAiText(null)
+
+    const trendRatio = (sku.avg_daily_sales_180 > 0 && sku.avg_forecast_per_day > 0)
+      ? sku.avg_forecast_per_day / sku.avg_daily_sales_180 : 1
+    const trendNote = trendRatio >= 1.3 ? ', xu hướng tăng mạnh so với lịch sử'
+      : trendRatio <= 0.7 ? ', xu hướng giảm so với lịch sử' : ''
+
+    const prompt =
+      `Phân tích ngắn cho ${sku.ItemCode} (${sku.demand_class}, ${sku.profit_segment}): ` +
+      `dự báo 56 ngày là ${sku.forecast_56d_total.toFixed(0)} units${trendNote}. ` +
+      `Hành động: ${sku.recommended_action}. ` +
+      `Viết 2–3 câu bằng tiếng Việt — chỉ giải thích ý nghĩa kinh doanh và khuyến nghị quan trọng nhất, không liệt kê số liệu thô.`
+
+    fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: prompt, history: [] }),
+    })
+      .then(r => r.json())
+      .then(d => { setAiText(d.reply ?? null); setAiLoading(false) })
+      .catch(() => setAiLoading(false))
+  }, [sku?.ItemCode])
 
   // Build 56-day forecast chart: weeks 1-4 from validation (F1-F28), weeks 5-8 from evaluation (F29-F56)
   const weeklyForecast = sku ? Array.from({ length: 8 }, (_, i) => ({
@@ -166,6 +208,22 @@ function ChiTietContent() {
               )}
             </div>
           </div>
+
+          {/* ── AI Explanation ──────────────────────────────── */}
+          {(aiLoading || aiText) && (
+            <div className="rounded-lg border border-blue-100 bg-gradient-to-r from-blue-50 to-indigo-50 px-5 py-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Sparkles size={14} className="text-blue-600 shrink-0" />
+                <span className="text-xs font-semibold text-blue-700 uppercase tracking-wide">
+                  Phân tích AI — {sku.ItemCode}
+                </span>
+              </div>
+              {aiLoading
+                ? <TypingDots />
+                : <p className="text-sm text-slate-700 leading-relaxed">{aiText}</p>
+              }
+            </div>
+          )}
 
           {/* KPI row 1 — Dự báo */}
           <div>

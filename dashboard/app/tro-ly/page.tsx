@@ -2,11 +2,19 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { Send, Bot, User, Sparkles, RotateCcw } from 'lucide-react'
+import {
+  BarChart, Bar, XAxis, YAxis, Cell,
+  Tooltip, ResponsiveContainer,
+} from 'recharts'
+
+interface ChartItem    { label: string; value: number; color?: string }
+interface ChartPayload { title: string; unit: string; items: ChartItem[] }
 
 interface Message {
   role: 'user' | 'assistant'
   content: string
   ts: number
+  chartData?: ChartPayload
 }
 
 const WELCOME = `Xin chào! Tôi là trợ lý phân tích dữ liệu phụ tùng ô tô 🚗
@@ -28,6 +36,39 @@ const QUICK_PROMPTS = [
   { label: '📦 Tồn kho dư',          text: 'Tồn kho nào đang dư thừa cần giải phóng? Ưu tiên SKU lợi nhuận cao.' },
 ]
 
+// ── Mini chart rendered inside assistant messages ─────────────
+function MiniChart({ data }: { data: ChartPayload }) {
+  const h = Math.max(120, data.items.length * 28 + 40)
+  return (
+    <div className="mt-3 bg-slate-50 rounded-xl border border-slate-100 px-3 pt-3 pb-1">
+      <p className="text-[11px] font-semibold text-slate-500 mb-2 uppercase tracking-wide">
+        {data.title}
+      </p>
+      <ResponsiveContainer width="100%" height={h}>
+        <BarChart
+          data={data.items}
+          layout="vertical"
+          margin={{ left: 4, right: 28, top: 0, bottom: 0 }}
+        >
+          <XAxis type="number" tick={{ fontSize: 10 }} tickLine={false} axisLine={false}
+            tickFormatter={v => v >= 1000 ? `${(v / 1000).toFixed(0)}K` : String(v)} />
+          <YAxis type="category" dataKey="label" tick={{ fontSize: 11, fontFamily: 'monospace' }}
+            width={72} tickLine={false} axisLine={false} />
+          <Tooltip
+            formatter={(v) => [`${Number(v).toLocaleString()} ${data.unit}`, '']}
+            cursor={{ fill: '#f1f5f9' }}
+          />
+          <Bar dataKey="value" radius={[0, 4, 4, 0]} maxBarSize={18}>
+            {data.items.map((item, i) => (
+              <Cell key={i} fill={item.color ?? '#2563eb'} />
+            ))}
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  )
+}
+
 function MessageBubble({ msg }: { msg: Message }) {
   const isUser = msg.role === 'user'
   return (
@@ -41,13 +82,18 @@ function MessageBubble({ msg }: { msg: Message }) {
           : <Bot size={14} className="text-white" />}
       </div>
 
-      {/* Bubble */}
-      <div className={`max-w-[78%] rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap ${
-        isUser
-          ? 'bg-blue-600 text-white rounded-tr-sm'
-          : 'bg-white border border-slate-200 text-slate-700 rounded-tl-sm shadow-sm'
-      }`}>
-        {msg.content}
+      {/* Bubble + optional chart */}
+      <div className={`max-w-[78%] ${isUser ? '' : 'w-full'}`}>
+        <div className={`rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap ${
+          isUser
+            ? 'bg-blue-600 text-white rounded-tr-sm'
+            : 'bg-white border border-slate-200 text-slate-700 rounded-tl-sm shadow-sm'
+        }`}>
+          {msg.content}
+          {!isUser && msg.chartData && msg.chartData.items.length > 0 && (
+            <MiniChart data={msg.chartData} />
+          )}
+        </div>
       </div>
     </div>
   )
@@ -113,6 +159,7 @@ export default function TroLy() {
         role: 'assistant',
         content: data.reply || 'Không có phản hồi.',
         ts: Date.now(),
+        chartData: data.chartData ?? undefined,
       }])
     } catch {
       setMessages(prev => [...prev, {

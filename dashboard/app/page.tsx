@@ -9,14 +9,38 @@ import KpiCard from '@/components/KpiCard'
 import StatusBadge from '@/components/StatusBadge'
 import type { KpiSummary, MonthlyTrend } from '@/lib/types'
 import {
-  AreaChart, Area, BarChart, Bar,
-  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
+  ComposedChart, Bar, Line,
+  PieChart, Pie, Cell,
+  BarChart,
+  XAxis, YAxis, CartesianGrid, Tooltip,
+  ResponsiveContainer, Legend,
 } from 'recharts'
 
-const PAGE_HEADER = {
-  title: 'Tổng quan',
-  desc: 'Tình trạng nhu cầu và tồn kho toàn bộ danh mục SKU',
+// ── Colours ──────────────────────────────────────────────────────────────────
+const DEMAND_COLORS: Record<string, string> = {
+  Frequent:     '#22c55e',
+  Active:       '#3b82f6',
+  Intermittent: '#f59e0b',
+  Dormant:      '#94a3b8',
 }
+
+const REL_COLORS: Record<string, string> = {
+  'High Reliability':     '#22c55e',
+  'Medium Reliability':   '#3b82f6',
+  'Low Reliability':      '#f97316',
+  'Insufficient History': '#94a3b8',
+}
+
+const PROFIT_COLORS: Record<string, string> = {
+  'High Profit':   '#2563eb',
+  'Medium Profit': '#60a5fa',
+  'Low Profit':    '#bfdbfe',
+}
+
+// ── Types ─────────────────────────────────────────────────────────────────────
+interface SegItem  { key: string; name: string; value: number }
+interface ProfItem { key: string; name: string; count: number; revenue: number; profit: number }
+interface Segments { demandClass: SegItem[]; profitSegment: ProfItem[]; reliability: SegItem[] }
 
 function fmt(n: number) {
   if (n >= 1_000_000_000) return `${(n / 1_000_000_000).toFixed(1)} tỷ`
@@ -25,13 +49,33 @@ function fmt(n: number) {
   return n.toFixed(0)
 }
 
+// Custom label for PieChart slices
+function PieLabel({ cx, cy, midAngle, innerRadius, outerRadius, percent }: {
+  cx: number; cy: number; midAngle: number; innerRadius: number; outerRadius: number; percent: number
+}) {
+  if (percent < 0.05) return null
+  const R = innerRadius + (outerRadius - innerRadius) * 0.5
+  const x = cx + R * Math.cos(-midAngle * (Math.PI / 180))
+  const y = cy + R * Math.sin(-midAngle * (Math.PI / 180))
+  return (
+    <text x={x} y={y} fill="white" textAnchor="middle" dominantBaseline="central"
+      fontSize={11} fontWeight={700}>
+      {`${(percent * 100).toFixed(0)}%`}
+    </text>
+  )
+}
+
 export default function TongQuan() {
-  const [kpis, setKpis] = useState<KpiSummary | null>(null)
-  const [monthly, setMonthly] = useState<MonthlyTrend[]>([])
-  const [topSkus, setTopSkus] = useState<{ ItemCode: string; forecast_56d_total: number; _status: string; recommended_action: string }[]>([])
+  const [kpis, setKpis]         = useState<KpiSummary | null>(null)
+  const [monthly, setMonthly]   = useState<MonthlyTrend[]>([])
+  const [segments, setSegments] = useState<Segments | null>(null)
+  const [topSkus, setTopSkus]   = useState<{
+    ItemCode: string; forecast_56d_total: number; _status: string; recommended_action: string
+  }[]>([])
 
   useEffect(() => {
     fetch('/api/kpis').then(r => r.json()).then(setKpis)
+    fetch('/api/segments').then(r => r.json()).then(setSegments)
     fetch('/api/monthly').then(r => r.json()).then((d: MonthlyTrend[]) =>
       setMonthly(d.filter(m => m.month >= '2022-01'))
     )
@@ -40,51 +84,41 @@ export default function TongQuan() {
       .then(d => setTopSkus(d.rows))
   }, [])
 
-  const chartData = monthly.map(m => ({
-    name: m.month.slice(2), // "22-01"
+  // Monthly ComposedChart — bars qty + line revenue
+  const monthlyChart = monthly.map(m => ({
+    name: m.month.slice(2),
     'Số lượng bán': Math.round(m.total_qty),
+    'Doanh thu (triệu)': Math.round(m.total_revenue / 1_000_000),
+  }))
+
+  // Profit segment chart — horizontal bars for revenue
+  const profitChart = (segments?.profitSegment ?? []).map(p => ({
+    name: p.name,
+    key: p.key,
+    'Doanh thu': Math.round(p.revenue / 1_000_000),
+    'Lợi nhuận': Math.round(p.profit / 1_000_000),
   }))
 
   return (
     <div className="p-6 space-y-6">
       {/* Page header */}
       <div className="border-b border-slate-200 pb-4">
-        <h1 className="text-xl font-semibold text-slate-800">{PAGE_HEADER.title}</h1>
-        <p className="text-sm text-slate-500 mt-0.5">{PAGE_HEADER.desc}</p>
+        <h1 className="text-xl font-semibold text-slate-800">Tổng quan</h1>
+        <p className="text-sm text-slate-500 mt-0.5">Tình trạng nhu cầu và tồn kho toàn bộ danh mục SKU</p>
       </div>
 
       {/* KPI Row 1 — Dự báo */}
       <div>
-        <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-3">
-          Dự báo nhu cầu
-        </h2>
+        <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-3">Dự báo nhu cầu</h2>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <KpiCard
-            label="Tổng nhu cầu 28 ngày tới"
-            value={kpis ? fmt(kpis.total_forecast_28d) + ' units' : '—'}
-            sub="Tháng 9–10/2025"
-            icon={TrendingUp}
-            variant="info"
-          />
-          <KpiCard
-            label="Tổng nhu cầu 56 ngày tới"
-            value={kpis ? fmt(kpis.total_forecast_56d) + ' units' : '—'}
-            sub="Tháng 9–10/2025"
-            icon={BarChart3}
-          />
-          <KpiCard
-            label="SKU đang hoạt động"
-            value={kpis ? kpis.active_skus.toLocaleString() : '—'}
-            sub={`/ ${kpis?.total_skus.toLocaleString() ?? '—'} tổng SKU`}
-            icon={Activity}
-            variant="success"
-          />
-          <KpiCard
-            label="SKU không còn bán"
-            value={kpis ? kpis.dormant_skus.toLocaleString() : '—'}
-            sub="Không có giao dịch 180 ngày"
-            icon={Package}
-          />
+          <KpiCard label="Tổng nhu cầu 28 ngày tới" value={kpis ? fmt(kpis.total_forecast_28d) + ' units' : '—'}
+            sub="F1–F28" icon={TrendingUp} variant="info" />
+          <KpiCard label="Tổng nhu cầu 56 ngày tới" value={kpis ? fmt(kpis.total_forecast_56d) + ' units' : '—'}
+            sub="F1–F56" icon={BarChart3} />
+          <KpiCard label="SKU đang hoạt động" value={kpis ? kpis.active_skus.toLocaleString() : '—'}
+            sub={`/ ${kpis?.total_skus.toLocaleString() ?? '—'} tổng SKU`} icon={Activity} variant="success" />
+          <KpiCard label="SKU không còn bán" value={kpis ? kpis.dormant_skus.toLocaleString() : '—'}
+            sub="Không giao dịch 180 ngày" icon={Package} />
         </div>
       </div>
 
@@ -94,72 +128,53 @@ export default function TongQuan() {
           Tình trạng tồn kho (mô phỏng)
         </h2>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <KpiCard
-            label="SKU cần nhập hàng ngay"
-            value={kpis ? kpis.action_urgent.toLocaleString() : '—'}
-            sub="Nguy cơ hết hàng trong lead time"
-            icon={AlertTriangle}
-            variant="danger"
-          />
-          <KpiCard
-            label="SKU nguy cơ hết hàng"
-            value={kpis ? kpis.stockout_risk_skus.toLocaleString() : '—'}
-            sub="Tồn kho < safety stock"
-            icon={AlertTriangle}
-            variant="warning"
-          />
-          <KpiCard
-            label="SKU tồn kho dư"
-            value={kpis ? kpis.overstock_skus.toLocaleString() : '—'}
-            sub="Tồn kho > 1.5× nhu cầu 56 ngày"
-            icon={Package}
-            variant="info"
-          />
-          <KpiCard
-            label="SKU cần xem xét"
-            value={kpis ? kpis.action_review.toLocaleString() : '—'}
-            sub="Review với bộ phận Kinh doanh"
-            icon={ShoppingCart}
-          />
+          <KpiCard label="SKU cần nhập hàng ngay" value={kpis ? kpis.action_urgent.toLocaleString() : '—'}
+            sub="Nguy cơ hết hàng trong lead time" icon={AlertTriangle} variant="danger" />
+          <KpiCard label="SKU nguy cơ hết hàng" value={kpis ? kpis.stockout_risk_skus.toLocaleString() : '—'}
+            sub="Tồn kho < safety stock" icon={AlertTriangle} variant="warning" />
+          <KpiCard label="SKU tồn kho dư" value={kpis ? kpis.overstock_skus.toLocaleString() : '—'}
+            sub="Tồn kho > 1.5× nhu cầu 56 ngày" icon={Package} variant="info" />
+          <KpiCard label="SKU cần xem xét" value={kpis ? kpis.action_review.toLocaleString() : '—'}
+            sub="Review với bộ phận Kinh doanh" icon={ShoppingCart} />
         </div>
       </div>
 
-      {/* Charts */}
+      {/* ── Chart row 1: Monthly trend + Top SKU ──────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
-        {/* Monthly trend */}
+
+        {/* Monthly trend — ComposedChart (bar qty + line revenue) */}
         <div className="lg:col-span-3 bg-white rounded-lg border border-slate-200 p-5">
-          <h3 className="text-sm font-semibold text-slate-700 mb-4">
-            Xu hướng bán hàng theo tháng
-          </h3>
+          <h3 className="text-sm font-semibold text-slate-700 mb-1">Xu hướng bán hàng theo tháng</h3>
+          <p className="text-xs text-slate-400 mb-4">Số lượng bán (cột) và doanh thu (đường)</p>
           <ResponsiveContainer width="100%" height={220}>
-            <AreaChart data={chartData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
-              <defs>
-                <linearGradient id="qty" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%"  stopColor="#2563eb" stopOpacity={0.15} />
-                  <stop offset="95%" stopColor="#2563eb" stopOpacity={0}    />
-                </linearGradient>
-              </defs>
+            <ComposedChart data={monthlyChart} margin={{ top: 4, right: 48, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
               <XAxis dataKey="name" tick={{ fontSize: 11 }} interval={2} />
-              <YAxis tick={{ fontSize: 11 }} tickFormatter={v => `${(v/1000).toFixed(0)}K`} />
+              <YAxis yAxisId="left" tick={{ fontSize: 11 }}
+                tickFormatter={v => `${(v / 1000).toFixed(0)}K`} />
+              <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 11 }}
+                tickFormatter={v => `${v}M`} />
               <Tooltip
-                formatter={(v) => [`${Number(v).toLocaleString()} units`, 'Số lượng bán']}
+                formatter={(v, name) =>
+                  name === 'Doanh thu (triệu)'
+                    ? [`${Number(v).toLocaleString()} triệu đ`, 'Doanh thu']
+                    : [`${Number(v).toLocaleString()} units`, 'Số lượng bán']
+                }
                 labelFormatter={l => `Tháng ${l}`}
               />
-              <Area
-                type="monotone" dataKey="Số lượng bán"
-                stroke="#2563eb" strokeWidth={2}
-                fill="url(#qty)"
-              />
-            </AreaChart>
+              <Legend wrapperStyle={{ fontSize: 11 }} />
+              <Bar yAxisId="left" dataKey="Số lượng bán" fill="#2563eb" fillOpacity={0.75}
+                radius={[2, 2, 0, 0]} />
+              <Line yAxisId="right" type="monotone" dataKey="Doanh thu (triệu)"
+                stroke="#10b981" strokeWidth={2} dot={false} />
+            </ComposedChart>
           </ResponsiveContainer>
         </div>
 
-        {/* Top 10 SKUs */}
+        {/* Top 10 SKU */}
         <div className="lg:col-span-2 bg-white rounded-lg border border-slate-200 p-5">
-          <h3 className="text-sm font-semibold text-slate-700 mb-4">
-            Top 10 SKU — Nhu cầu cao nhất (56 ngày)
-          </h3>
+          <h3 className="text-sm font-semibold text-slate-700 mb-1">Top 10 SKU — Nhu cầu cao nhất</h3>
+          <p className="text-xs text-slate-400 mb-4">Dự báo 56 ngày tới</p>
           <div className="space-y-2">
             {topSkus.map((s, i) => (
               <div key={s.ItemCode} className="flex items-center gap-2">
@@ -191,11 +206,93 @@ export default function TongQuan() {
         </div>
       </div>
 
-      {/* Doanh thu / Lợi nhuận lịch sử */}
+      {/* ── Chart row 2: Distribution charts ─────────────────────── */}
+      <div>
+        <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-3">
+          Phân bố danh mục SKU
+        </h2>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+
+          {/* Pie — Demand class */}
+          <div className="bg-white rounded-lg border border-slate-200 p-5">
+            <h3 className="text-sm font-semibold text-slate-700 mb-1">Phân bố xu hướng bán</h3>
+            <p className="text-xs text-slate-400 mb-2">Tỉ lệ SKU theo loại nhu cầu</p>
+            <ResponsiveContainer width="100%" height={200}>
+              <PieChart>
+                <Pie
+                  data={segments?.demandClass ?? []}
+                  cx="50%" cy="50%"
+                  innerRadius={45} outerRadius={75}
+                  paddingAngle={3}
+                  dataKey="value"
+                  nameKey="name"
+                  labelLine={false}
+                  label={PieLabel as never}
+                >
+                  {(segments?.demandClass ?? []).map(entry => (
+                    <Cell key={entry.key} fill={DEMAND_COLORS[entry.key] ?? '#94a3b8'} />
+                  ))}
+                </Pie>
+                <Tooltip formatter={(v, n) => [`${Number(v).toLocaleString()} SKU`, n]} />
+                <Legend wrapperStyle={{ fontSize: 11 }} iconSize={10} />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+
+          {/* Horizontal bar — Revenue by profit segment */}
+          <div className="bg-white rounded-lg border border-slate-200 p-5">
+            <h3 className="text-sm font-semibold text-slate-700 mb-1">Doanh thu theo phân khúc</h3>
+            <p className="text-xs text-slate-400 mb-2">Doanh thu & lợi nhuận (triệu đồng)</p>
+            <ResponsiveContainer width="100%" height={200}>
+              <BarChart
+                data={profitChart}
+                layout="vertical"
+                margin={{ left: 10, right: 20, top: 4, bottom: 4 }}
+              >
+                <XAxis type="number" tick={{ fontSize: 10 }}
+                  tickFormatter={v => v >= 1000 ? `${(v / 1000).toFixed(0)}B` : `${v}M`} />
+                <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} width={110} />
+                <Tooltip formatter={v => [`${Number(v).toLocaleString()} triệu đ`, '']} />
+                <Legend wrapperStyle={{ fontSize: 11 }} iconSize={10} />
+                <Bar dataKey="Doanh thu" radius={[0, 3, 3, 0]} maxBarSize={16}>
+                  {profitChart.map(entry => (
+                    <Cell key={entry.key} fill={PROFIT_COLORS[entry.key] ?? '#94a3b8'} />
+                  ))}
+                </Bar>
+                <Bar dataKey="Lợi nhuận" fill="#10b981" radius={[0, 3, 3, 0]} maxBarSize={16} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+
+          {/* Horizontal bar — Reliability breakdown */}
+          <div className="bg-white rounded-lg border border-slate-200 p-5">
+            <h3 className="text-sm font-semibold text-slate-700 mb-1">Đặc điểm nhu cầu SKU</h3>
+            <p className="text-xs text-slate-400 mb-2">Phân bố theo mức độ ổn định nhu cầu</p>
+            <ResponsiveContainer width="100%" height={200}>
+              <BarChart
+                data={segments?.reliability ?? []}
+                layout="vertical"
+                margin={{ left: 10, right: 20, top: 4, bottom: 4 }}
+              >
+                <XAxis type="number" tick={{ fontSize: 10 }} />
+                <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} width={120} />
+                <Tooltip formatter={v => [`${Number(v).toLocaleString()} SKU`, '']} />
+                <Bar dataKey="value" radius={[0, 3, 3, 0]} maxBarSize={20} name="Số SKU">
+                  {(segments?.reliability ?? []).map(entry => (
+                    <Cell key={entry.key} fill={REL_COLORS[entry.key] ?? '#94a3b8'} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Business summary ─────────────────────────────────────── */}
       <div className="bg-white rounded-lg border border-slate-200 p-5">
         <h3 className="text-sm font-semibold text-slate-700 mb-1">Hiệu quả kinh doanh lịch sử</h3>
         <p className="text-xs text-slate-400 mb-4">Tổng hợp từ dữ liệu giao dịch 2020–2025</p>
-        <div className="grid grid-cols-3 gap-6">
+        <div className="grid grid-cols-4 gap-6">
           <div>
             <p className="text-xs text-slate-400">Tổng doanh thu</p>
             <p className="text-xl font-bold text-slate-800 mt-0.5">
@@ -206,6 +303,14 @@ export default function TongQuan() {
             <p className="text-xs text-slate-400">Tổng lợi nhuận</p>
             <p className="text-xl font-bold text-emerald-700 mt-0.5">
               {kpis ? fmt(kpis.total_profit) + ' đ' : '—'}
+            </p>
+          </div>
+          <div>
+            <p className="text-xs text-slate-400">Biên lợi nhuận</p>
+            <p className="text-xl font-bold text-slate-800 mt-0.5">
+              {kpis && kpis.total_revenue > 0
+                ? `${((kpis.total_profit / kpis.total_revenue) * 100).toFixed(1)}%`
+                : '—'}
             </p>
           </div>
           <div>
