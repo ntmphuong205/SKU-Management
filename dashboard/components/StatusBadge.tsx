@@ -60,9 +60,9 @@ export default function StatusBadge({ value, type = 'raw' }: Props) {
     label = PROFIT_LABEL[value] ?? value
     style = getProfitStyle(value)
   } else if (type === 'status') {
-    label = value === 'stockout' ? '⚠️ Nguy cơ hết hàng'
-          : value === 'overstock' ? '📦 Tồn kho dư'
-          : '✅ Bình thường'
+    label = value === 'stockout' ? 'Nguy cơ hết hàng'
+          : value === 'overstock' ? 'Tồn kho dư'
+          : 'Bình thường'
     style = getStatusStyle(value)
   }
 

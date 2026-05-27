@@ -195,12 +195,26 @@ export default function CanhBao() {
       {/* Table */}
       <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full">
+          <table className="w-full table-fixed">
+            <colgroup>
+              <col className="w-28" />   {/* Mã SKU */}
+              <col className="w-32" />   {/* Phân khúc */}
+              <col className="w-36" />   {/* Xu hướng */}
+              <col className="w-28" />   {/* Dự báo 28 ngày */}
+              <col className="w-28" />   {/* Dự báo 56 ngày */}
+              <col className="w-32" />   {/* Đề xuất đặt */}
+              <col className="w-32" />   {/* Trạng thái */}
+              <col className="w-36" />   {/* Hành động */}
+              <col />                    {/* Lý do — chiếm phần còn lại */}
+            </colgroup>
             <thead className="bg-slate-50 border-b border-slate-200">
               <tr>
-                {['Mã SKU','Phân khúc','Xu hướng','Dự báo 28 ngày','Dự báo 56 ngày',
-                  'Đề xuất đặt (28 ngày)','Trạng thái','Hành động','Lý do'].map(h => (
-                  <th key={h} className="px-3 py-2.5 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wide whitespace-nowrap">
+                {[
+                  'Mã SKU', 'Phân khúc', 'Xu hướng',
+                  'Dự báo 28 ngày', 'Dự báo 56 ngày', 'Đề xuất đặt (28 ngày)',
+                  'Trạng thái', 'Hành động', 'Lý do',
+                ].map(h => (
+                  <th key={h} className="px-3 py-2.5 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wide">
                     {h}
                   </th>
                 ))}
@@ -213,37 +227,37 @@ export default function CanhBao() {
                 <tr><td colSpan={9} className="px-3 py-8 text-center text-sm text-slate-400">Không có dữ liệu</td></tr>
               ) : rows.map(r => (
                 <tr key={r.ItemCode} className={`text-sm transition-colors ${rowBg(r)}`}>
-                  <td className="px-3 py-2.5 font-mono font-medium whitespace-nowrap">
+                  <td className="px-3 py-2.5 font-mono font-medium">
                     <Link href={`/chi-tiet?sku=${r.ItemCode}`} className="text-blue-700 hover:underline">
                       {r.ItemCode}
                     </Link>
                   </td>
-                  <td className="px-3 py-2.5 whitespace-nowrap">
+                  <td className="px-3 py-2.5">
                     <StatusBadge value={r.profit_segment} type="profit" />
                   </td>
-                  <td className="px-3 py-2.5 whitespace-nowrap">
+                  <td className="px-3 py-2.5">
                     <StatusBadge value={r.demand_class} type="demand" />
                   </td>
-                  <td className="px-3 py-2.5 text-right font-medium text-slate-700 whitespace-nowrap">
+                  <td className="px-3 py-2.5 text-right font-medium text-slate-700">
                     {r.forecast_28d_validation?.toLocaleString(undefined,{maximumFractionDigits:1})}
                   </td>
-                  <td className="px-3 py-2.5 text-right font-medium text-slate-700 whitespace-nowrap">
+                  <td className="px-3 py-2.5 text-right font-medium text-slate-700">
                     {r.forecast_56d_total?.toLocaleString(undefined,{maximumFractionDigits:1})}
                   </td>
-                  <td className="px-3 py-2.5 text-right font-semibold text-red-700 whitespace-nowrap">
+                  <td className="px-3 py-2.5 text-right font-semibold text-red-700">
                     {r.recommended_action === 'Prioritize replenishment' && r.forecast_28d_validation > 0
                       ? r.forecast_28d_validation.toLocaleString(undefined, {maximumFractionDigits: 0})
                       : '—'}
                   </td>
-                  <td className="px-3 py-2.5 whitespace-nowrap">
+                  <td className="px-3 py-2.5">
                     <StatusBadge value={r._status} type="status" />
                   </td>
-                  <td className="px-3 py-2.5 whitespace-nowrap">
+                  <td className="px-3 py-2.5">
                     <StatusBadge value={r.recommended_action} type="action" />
                   </td>
-                  <td className="px-3 py-2.5 text-xs text-slate-500 max-w-xs">
+                  <td className="px-3 py-2.5 text-xs text-slate-500">
                     <div className="flex flex-col gap-0.5">
-                      {r.reason_codes?.split(' | ').slice(0,2).map((rc,i) => (
+                      {r.reason_codes?.split(' | ').map((rc, i) => (
                         <span key={i}>• {reasonVN(rc)}</span>
                       ))}
                     </div>
