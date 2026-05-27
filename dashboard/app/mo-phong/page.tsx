@@ -316,11 +316,11 @@ function MoPhongContent() {
                 <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Kết quả</p>
                 {stockout ? (
                   <p className="text-lg font-bold text-red-700 mt-0.5">
-                    🚨 Khuyến nghị đặt hàng: <span className="text-2xl">{Math.ceil(reorder).toLocaleString()} units</span>
+                    Khuyến nghị đặt hàng: <span className="text-2xl">{Math.ceil(reorder).toLocaleString()} units</span>
                   </p>
                 ) : (
                   <p className="text-lg font-bold text-green-700 mt-0.5">
-                    ✅ Tồn kho đủ — chưa cần đặt hàng ngay
+                    Tồn kho đủ — chưa cần đặt hàng ngay
                   </p>
                 )}
               </div>
