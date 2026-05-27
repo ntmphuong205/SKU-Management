@@ -182,7 +182,7 @@ export default function DanhSach() {
                   <SortBtn col="forecast_56d_total" label="DB 56 ngày" />
                 </th>
                 <th className="px-3 py-2.5 text-left text-[11px] text-slate-500">Trạng thái</th>
-                <th className="px-3 py-2.5 text-left text-[11px] text-slate-500">Độ tin cậy</th>
+                <th className="px-3 py-2.5 text-left text-[11px] text-slate-500">Đặc điểm nhu cầu</th>
                 <th className="px-3 py-2.5 text-left text-[11px] text-slate-500">Hành động</th>
                 <th className="px-3 py-2.5 text-[11px] text-slate-500">Chi tiết</th>
               </tr>

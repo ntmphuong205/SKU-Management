@@ -155,7 +155,7 @@ function ChiTietContent() {
             {/* Forecast Intelligence row */}
             <div className="mt-3 pt-3 border-t border-black/10 flex items-center gap-4 flex-wrap">
               <div className="flex items-center gap-2">
-                <span className="text-xs font-semibold opacity-60 uppercase tracking-wide">Độ tin cậy dự báo</span>
+                <span className="text-xs font-semibold opacity-60 uppercase tracking-wide">Đặc điểm nhu cầu</span>
                 <StatusBadge value={sku.reliability_tag} type="reliability" />
               </div>
               {sku._badges?.length > 0 && (

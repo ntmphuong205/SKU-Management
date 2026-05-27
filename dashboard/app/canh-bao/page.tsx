@@ -211,7 +211,7 @@ export default function CanhBao() {
                 {[
                   'Mã SKU', 'Phân khúc',
                   'Dự báo 28 ngày', 'Dự báo 56 ngày', 'Đề xuất đặt (28 ngày)',
-                  'Độ tin cậy', 'Hành động', 'Tín hiệu & Lý do',
+                  'Đặc điểm nhu cầu', 'Hành động', 'Tín hiệu & Lý do',
                 ].map(h => (
                   <th key={h} className="px-3 py-2.5 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wide">
                     {h}
