@@ -1,11 +1,12 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
-import { AlertTriangle, Download, Lock } from 'lucide-react'
+import { AlertTriangle, Download, Lock, Send } from 'lucide-react'
 import Link from 'next/link'
 import StatusBadge, { IntelBadges } from '@/components/StatusBadge'
 import { ACTION_LABEL } from '@/lib/types'
 import { useRole } from '@/context/RoleContext'
+import { getProposals, saveProposal } from '@/lib/proposals'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip,
   ResponsiveContainer, Cell, LabelList,
@@ -51,6 +52,32 @@ export default function CanhBao() {
 
   // For sales, always lock to stockout-only
   const effectiveFilter = isSalesReadonly ? 'Prioritize replenishment' : actionFilter
+
+  // Proposal states (sales only)
+  const [proposalModal, setProposalModal] = useState<{ sku: string; forecast: number } | null>(null)
+  const [proposalQty, setProposalQty]     = useState(0)
+  const [proposalNote, setProposalNote]   = useState('')
+  const [proposedSkus, setProposedSkus]   = useState<Set<string>>(new Set())
+
+  useEffect(() => {
+    if (isSalesReadonly) {
+      const existing = getProposals()
+      setProposedSkus(new Set(existing.filter(p => p.status === 'pending').map(p => p.sku)))
+    }
+  }, [isSalesReadonly])
+
+  function openProposal(sku: string, forecast: number) {
+    setProposalQty(Math.max(1, Math.ceil(forecast)))
+    setProposalNote('')
+    setProposalModal({ sku, forecast })
+  }
+
+  function submitProposal() {
+    if (!proposalModal || proposalQty <= 0) return
+    saveProposal({ sku: proposalModal.sku, qty: proposalQty, note: proposalNote })
+    setProposedSkus(prev => new Set([...prev, proposalModal.sku]))
+    setProposalModal(null)
+  }
 
   useEffect(() => {
     async function fetchCounts() {
@@ -264,8 +291,9 @@ export default function CanhBao() {
                   'Dự báo 28 ngày', 'Dự báo 56 ngày',
                   ...(!isSalesReadonly ? ['Đề xuất đặt'] : []),
                   'Đặc điểm nhu cầu', 'Lý do',
-                ].map(h => (
-                  <th key={h} className="px-4 py-3 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                  ...(isSalesReadonly ? [''] : []),
+                ].map((h, i) => (
+                  <th key={i} className="px-4 py-3 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
                     {h}
                   </th>
                 ))}
@@ -273,9 +301,9 @@ export default function CanhBao() {
             </thead>
             <tbody className="divide-y divide-slate-100">
               {loading ? (
-                <tr><td colSpan={isSalesReadonly ? 7 : 8} className="px-4 py-8 text-center text-sm text-slate-400">Đang tải…</td></tr>
+                <tr><td colSpan={8} className="px-4 py-8 text-center text-sm text-slate-400">Đang tải…</td></tr>
               ) : rows.length === 0 ? (
-                <tr><td colSpan={isSalesReadonly ? 7 : 8} className="px-4 py-8 text-center text-sm text-slate-400">Không có dữ liệu</td></tr>
+                <tr><td colSpan={8} className="px-4 py-8 text-center text-sm text-slate-400">Không có dữ liệu</td></tr>
               ) : rows.map(r => (
                 <tr key={r.ItemCode} className="hover:bg-slate-50 transition-colors">
                   <td className="px-4 py-3 font-mono text-sm font-medium text-slate-800">
@@ -314,6 +342,20 @@ export default function CanhBao() {
                   <td className="px-4 py-3 text-xs text-slate-500 max-w-xs">
                     {r.reason_codes?.split(' | ').slice(0,2).map(reasonVN).join(' · ')}
                   </td>
+                  {isSalesReadonly && (
+                    <td className="px-4 py-3 text-right whitespace-nowrap">
+                      {proposedSkus.has(r.ItemCode) ? (
+                        <span className="text-[11px] text-slate-400 italic">Đã đề xuất</span>
+                      ) : (
+                        <button
+                          onClick={() => openProposal(r.ItemCode, r.forecast_28d_validation)}
+                          className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-800"
+                        >
+                          <Send size={11} /> Đề xuất
+                        </button>
+                      )}
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>
@@ -340,6 +382,60 @@ export default function CanhBao() {
           </div>
         </div>
       </div>
+
+      {/* Proposal modal */}
+      {proposalModal && (
+        <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-sm p-6">
+            <h2 className="text-base font-semibold text-slate-800 mb-0.5">Đề xuất nhập hàng</h2>
+            <p className="text-sm text-slate-500 mb-4">
+              SKU: <span className="font-mono font-semibold text-slate-700">{proposalModal.sku}</span>
+            </p>
+
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs text-slate-500 block mb-1">Số lượng đề xuất nhập</label>
+                <input
+                  type="number"
+                  min={1}
+                  value={proposalQty}
+                  onChange={e => setProposalQty(Number(e.target.value))}
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                />
+                <p className="text-[11px] text-slate-400 mt-0.5">
+                  Dự báo 28 ngày: {proposalModal.forecast.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                </p>
+              </div>
+              <div>
+                <label className="text-xs text-slate-500 block mb-1">Ghi chú (tuỳ chọn)</label>
+                <textarea
+                  value={proposalNote}
+                  onChange={e => setProposalNote(e.target.value)}
+                  rows={2}
+                  placeholder="Lý do đề xuất, thông tin thêm từ khách hàng..."
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-2 mt-5">
+              <button
+                onClick={() => setProposalModal(null)}
+                className="flex-1 py-2 text-sm border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={submitProposal}
+                disabled={proposalQty <= 0}
+                className="flex-1 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-40 transition-colors"
+              >
+                Gửi đề xuất
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

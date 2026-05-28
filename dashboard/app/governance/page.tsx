@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Download, ShieldCheck, BarChart3, AlertTriangle, Package } from 'lucide-react'
+import { Download, ShieldCheck, BarChart3, AlertTriangle, Package, CheckCircle, XCircle, Clock } from 'lucide-react'
+import { getProposals, updateProposal, type Proposal } from '@/lib/proposals'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   Cell, PieChart, Pie, Legend,
@@ -64,8 +65,26 @@ export default function GovernancePage() {
   const [kpis, setKpis]         = useState<KpiSummary | null>(null)
   const [segments, setSegments] = useState<Segments | null>(null)
   const [riskCounts, setRiskCounts] = useState({ urgent: 0, review: 0, returns: 0, slow: 0 })
+  const [proposals, setProposals] = useState<Proposal[]>([])
+  const [reviewModal, setReviewModal] = useState<{ id: string; type: 'approve' | 'reject' } | null>(null)
+  const [reviewNote, setReviewNote] = useState('')
+
+  function refreshProposals() { setProposals(getProposals()) }
+
+  function handleReview() {
+    if (!reviewModal) return
+    updateProposal(reviewModal.id, {
+      status:     reviewModal.type === 'approve' ? 'approved' : 'rejected',
+      reviewedAt: new Date().toISOString(),
+      reviewNote: reviewNote.trim() || undefined,
+    })
+    refreshProposals()
+    setReviewModal(null)
+    setReviewNote('')
+  }
 
   useEffect(() => {
+    refreshProposals()
     fetch('/api/kpis').then(r => r.json()).then(setKpis)
     fetch('/api/segments').then(r => r.json()).then(setSegments)
     Promise.all([
@@ -123,6 +142,99 @@ export default function GovernancePage() {
         </div>
         <p className="text-sm text-slate-500">Tổng quan hệ thống · Hiệu suất mô hình dự báo · Xuất báo cáo</p>
       </div>
+
+      {/* ── Proposals section ───────────────────────────────────── */}
+      {(() => {
+        const pending  = proposals.filter(p => p.status === 'pending')
+        const history  = proposals.filter(p => p.status !== 'pending')
+        const fmtDate  = (s: string) => new Date(s).toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' })
+
+        return (
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-widest">
+                Đề xuất nhập hàng
+              </h2>
+              {pending.length > 0 && (
+                <span className="text-xs font-semibold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
+                  {pending.length} chờ phê duyệt
+                </span>
+              )}
+            </div>
+
+            {proposals.length === 0 ? (
+              <div className="bg-white rounded-xl border border-slate-100 shadow-sm px-5 py-8 text-center text-sm text-slate-400">
+                Chưa có đề xuất nào từ bộ phận Kinh doanh
+              </div>
+            ) : (
+              <div className="bg-white rounded-xl border border-slate-100 shadow-sm shadow-slate-200/50 overflow-hidden">
+                <table className="w-full">
+                  <thead className="bg-slate-50 border-b border-slate-100">
+                    <tr>
+                      {['Mã SKU', 'Số lượng', 'Ghi chú', 'Ngày gửi', 'Trạng thái', ''].map(h => (
+                        <th key={h} className="px-4 py-3 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-wider">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {/* Pending first */}
+                    {pending.map(p => (
+                      <tr key={p.id} className="bg-amber-50/40 hover:bg-amber-50 transition-colors">
+                        <td className="px-4 py-3 font-mono text-sm font-semibold text-slate-800">{p.sku}</td>
+                        <td className="px-4 py-3 text-sm text-slate-700">{p.qty.toLocaleString()}</td>
+                        <td className="px-4 py-3 text-xs text-slate-500 max-w-xs">{p.note || <span className="italic text-slate-300">—</span>}</td>
+                        <td className="px-4 py-3 text-xs text-slate-400 whitespace-nowrap">{fmtDate(p.submittedAt)}</td>
+                        <td className="px-4 py-3">
+                          <span className="inline-flex items-center gap-1 text-xs text-amber-700">
+                            <Clock size={11} /> Chờ duyệt
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => { setReviewNote(''); setReviewModal({ id: p.id, type: 'approve' }) }}
+                              className="inline-flex items-center gap-1 text-xs font-medium text-emerald-700 hover:text-emerald-900"
+                            >
+                              <CheckCircle size={13} /> Phê duyệt
+                            </button>
+                            <button
+                              onClick={() => { setReviewNote(''); setReviewModal({ id: p.id, type: 'reject' }) }}
+                              className="inline-flex items-center gap-1 text-xs font-medium text-red-600 hover:text-red-800"
+                            >
+                              <XCircle size={13} /> Từ chối
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                    {/* History */}
+                    {history.map(p => (
+                      <tr key={p.id} className="opacity-60 hover:opacity-80 transition-opacity">
+                        <td className="px-4 py-3 font-mono text-sm text-slate-600">{p.sku}</td>
+                        <td className="px-4 py-3 text-sm text-slate-500">{p.qty.toLocaleString()}</td>
+                        <td className="px-4 py-3 text-xs text-slate-400 max-w-xs">{p.note || '—'}</td>
+                        <td className="px-4 py-3 text-xs text-slate-400 whitespace-nowrap">{fmtDate(p.submittedAt)}</td>
+                        <td className="px-4 py-3">
+                          {p.status === 'approved' ? (
+                            <span className="inline-flex items-center gap-1 text-xs text-emerald-700">
+                              <CheckCircle size={11} /> Đã duyệt
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 text-xs text-red-600">
+                              <XCircle size={11} /> Từ chối
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-xs text-slate-400 italic">{p.reviewNote ?? ''}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )
+      })()}
 
       {/* System KPIs */}
       <div>
@@ -294,6 +406,51 @@ export default function GovernancePage() {
         </div>
       </div>
 
+      {/* Review modal */}
+      {reviewModal && (
+        <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-sm p-6">
+            <h2 className="text-base font-semibold text-slate-800 mb-1">
+              {reviewModal.type === 'approve' ? 'Phê duyệt đề xuất' : 'Từ chối đề xuất'}
+            </h2>
+            <p className="text-sm text-slate-500 mb-4">
+              {reviewModal.type === 'approve'
+                ? 'Xác nhận phê duyệt đề xuất nhập hàng từ bộ phận Kinh doanh.'
+                : 'Nhập lý do từ chối để Kinh doanh biết và điều chỉnh.'}
+            </p>
+            <div>
+              <label className="text-xs text-slate-500 block mb-1">
+                {reviewModal.type === 'approve' ? 'Ghi chú phê duyệt (tuỳ chọn)' : 'Lý do từ chối'}
+              </label>
+              <textarea
+                value={reviewNote}
+                onChange={e => setReviewNote(e.target.value)}
+                rows={2}
+                placeholder={reviewModal.type === 'approve' ? 'Ví dụ: ưu tiên nhập trong tuần này...' : 'Ví dụ: tồn kho hiện đủ 30 ngày...'}
+                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none"
+              />
+            </div>
+            <div className="flex gap-2 mt-4">
+              <button
+                onClick={() => setReviewModal(null)}
+                className="flex-1 py-2 text-sm border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={handleReview}
+                className={`flex-1 py-2 text-sm font-medium text-white rounded-lg transition-colors ${
+                  reviewModal.type === 'approve'
+                    ? 'bg-emerald-600 hover:bg-emerald-700'
+                    : 'bg-red-600 hover:bg-red-700'
+                }`}
+              >
+                {reviewModal.type === 'approve' ? 'Phê duyệt' : 'Từ chối'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
