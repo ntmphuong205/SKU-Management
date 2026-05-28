@@ -91,14 +91,43 @@ const PROFILE = {
 }
 
 export default function Topbar() {
-  const [open, setOpen]             = useState(false)
+  const [open, setOpen]               = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
-  const [readIds, setReadIds]       = useState<Set<number>>(new Set())
+  const [readIds, setReadIds]         = useState<Set<number>>(new Set())
+  const [signals, setSignals]         = useState<Signal[]>(macroSignals)
+  const [isLive, setIsLive]           = useState(false)
+  const [refreshing, setRefreshing]   = useState(false)
+  const [refreshedAt, setRefreshedAt] = useState<string | null>(null)
   const bellRef    = useRef<HTMLDivElement>(null)
   const profileRef = useRef<HTMLDivElement>(null)
   const { role, setRole } = useRole()
   const roleMeta = role ? ROLES[role] : null
   const router = useRouter()
+
+  async function loadSignals() {
+    setRefreshing(true)
+    try {
+      const res = await fetch('/api/signals')
+      if (!res.ok) throw new Error('failed')
+      const data = await res.json()
+      if (data.signals?.length) {
+        setSignals(data.signals)
+        setIsLive(true)
+        setRefreshedAt(data.refreshedAt)
+        setReadIds(new Set()) // reset read state for fresh signals
+      }
+    } catch {
+      // keep fallback signals, don't update isLive
+    } finally {
+      setRefreshing(false)
+    }
+  }
+
+  useEffect(() => {
+    loadSignals()
+    const interval = setInterval(loadSignals, 10 * 60 * 1000) // refresh every 10 min
+    return () => clearInterval(interval)
+  }, [])
 
   useEffect(() => {
     function onMouseDown(e: MouseEvent) {
@@ -114,10 +143,18 @@ export default function Topbar() {
     router.push('/login')
   }
 
-  const unread = macroSignals.filter(s => !readIds.has(s.id)).length
+  function refreshedLabel() {
+    if (!refreshedAt) return null
+    const diff = Math.floor((Date.now() - new Date(refreshedAt).getTime()) / 1000)
+    if (diff < 60)   return 'Vừa cập nhật'
+    if (diff < 3600) return `Cập nhật ${Math.floor(diff / 60)} phút trước`
+    return `Cập nhật ${Math.floor(diff / 3600)} giờ trước`
+  }
+
+  const unread = signals.filter(s => !readIds.has(s.id)).length
 
   function markAllRead() {
-    setReadIds(new Set(macroSignals.map(s => s.id)))
+    setReadIds(new Set(signals.map(s => s.id)))
   }
 
   function markRead(id: number) {
@@ -148,24 +185,43 @@ export default function Topbar() {
             {/* Panel header */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 bg-slate-50/60">
               <div>
-                <p className="text-sm font-semibold text-slate-800">Tín hiệu thị trường</p>
+                <div className="flex items-center gap-1.5">
+                  <p className="text-sm font-semibold text-slate-800">Tín hiệu thị trường</p>
+                  {isLive
+                    ? <span className="inline-flex items-center gap-1 text-[10px] font-medium text-emerald-600 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded-full">
+                        <span className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse" />Live
+                      </span>
+                    : <span className="text-[10px] text-slate-400 bg-slate-100 border border-slate-200 px-1.5 py-0.5 rounded-full">Demo</span>
+                  }
+                </div>
                 <p className="text-[11px] text-slate-400 mt-0.5">
-                  {unread > 0 ? `${unread} chưa đọc` : 'Đã đọc tất cả'} · Cập nhật realtime
+                  {unread > 0 ? `${unread} chưa đọc` : 'Đã đọc tất cả'}
+                  {isLive && refreshedLabel() ? ` · ${refreshedLabel()}` : ' · VnExpress'}
                 </p>
               </div>
-              {unread > 0 && (
+              <div className="flex items-center gap-2">
                 <button
-                  onClick={markAllRead}
-                  className="text-xs text-blue-600 hover:text-blue-800 font-medium"
+                  onClick={loadSignals}
+                  disabled={refreshing}
+                  className="text-slate-400 hover:text-slate-600 transition-colors disabled:opacity-40"
+                  title="Làm mới"
                 >
-                  Đánh dấu đã đọc
+                  <RefreshCw size={13} className={refreshing ? 'animate-spin' : ''} />
                 </button>
-              )}
+                {unread > 0 && (
+                  <button
+                    onClick={markAllRead}
+                    className="text-xs text-blue-600 hover:text-blue-800 font-medium"
+                  >
+                    Đã đọc
+                  </button>
+                )}
+              </div>
             </div>
 
             {/* Signal list */}
             <div className="overflow-y-auto max-h-[480px] divide-y divide-slate-50">
-              {macroSignals.map(signal => {
+              {signals.map(signal => {
                 const cfg  = TYPE_CFG[signal.type]
                 const Icon = cfg.Icon
                 const read = readIds.has(signal.id)
