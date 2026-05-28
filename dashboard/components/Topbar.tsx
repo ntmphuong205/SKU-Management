@@ -17,42 +17,42 @@ const macroSignals: Signal[] = [
   {
     id: 1, type: 'critical', time: '10 phút trước',
     title: 'Cảng Hải Phòng ùn tắc cục bộ',
-    desc: 'Lead time thực tế tăng +5 ngày. Ngưỡng cảnh báo Stockout trên UI đã tự động nới rộng để khớp với Lead time mới.',
+    desc: 'Thời gian giao hàng thực tế tăng thêm khoảng 5 ngày. Hệ thống đã tự động điều chỉnh ngưỡng cảnh báo tồn kho để giảm nguy cơ đứt hàng trong thời gian chờ.',
   },
   {
     id: 2, type: 'warning', time: '1 giờ trước',
-    title: 'Tỷ giá USD/VND biến động (+1.5%)',
-    desc: 'Cost Amount nhập khẩu dự kiến tăng. Cập nhật lại rank profit_pct. Model v89 đã rút trọng số dự báo các mã rớt khỏi top 30% LN.',
+    title: 'Tỷ giá USD/VND tăng 1,5%',
+    desc: 'Chi phí nhập khẩu dự kiến đội lên theo. Nên kiểm tra lại biên lợi nhuận các mặt hàng nhập ngoại và cân nhắc chốt đơn đặt hàng trước khi tỷ giá tiếp tục tăng.',
   },
   {
     id: 3, type: 'info', time: '3 giờ trước',
-    title: 'Chính sách thuế xe mới tăng',
-    desc: 'Người dân có xu hướng giữ xe cũ. Đề xuất: Dùng tính năng Mô phỏng để tăng tay hệ số dự báo (+10%) cho cụm SKU "Bảo dưỡng định kỳ".',
+    title: 'Thuế trước bạ ô tô tăng từ tháng tới',
+    desc: 'Người dùng có xu hướng giữ xe cũ lâu hơn, nhu cầu bảo dưỡng và thay thế phụ tùng dự kiến tăng. Cân nhắc tăng dự trữ cho nhóm phụ tùng bảo dưỡng định kỳ.',
   },
   {
     id: 4, type: 'warning', time: 'Hôm qua',
-    title: 'Giá nguyên liệu Thép tăng 5%',
-    desc: 'Cảnh báo Unit Cost của nhóm phụ tùng khung gầm sẽ tăng vào lô hàng tháng sau. Chú ý theo dõi Biên lợi nhuận gộp.',
+    title: 'Giá thép nguyên liệu tăng 5%',
+    desc: 'Giá nhập phụ tùng nhóm khung gầm và thân xe dự kiến tăng trong các lô hàng tháng tới. Nên theo dõi sát biên lợi nhuận và xem xét điều chỉnh giá bán kịp thời.',
   },
   {
     id: 5, type: 'info', time: 'Hôm qua',
-    title: 'Đối thủ X đứt hàng diện rộng',
-    desc: 'Cầu dịch chuyển. Biến trend (Nhu cầu 28 ngày / 84 ngày) của nhóm truyền động tăng vọt > 1.2. Mô hình v85 đã tự động tăng dự báo.',
+    title: 'Một số đối thủ đang thiếu hàng diện rộng',
+    desc: 'Khách hàng có thể chuyển sang mua tại các đại lý của chúng ta. Nhu cầu nhóm phụ tùng truyền động đang có dấu hiệu tăng — đây là cơ hội cần chuẩn bị hàng sẵn.',
   },
   {
     id: 6, type: 'critical', time: '2 ngày trước',
-    title: 'Cước vận tải biển tăng vọt',
-    desc: 'Chi phí Logistics tăng 15%. Hệ thống gợi ý: Tạm khóa dự báo dài hạn và tăng Safety Stock thêm 20% cho nhóm hàng chủ lực.',
+    title: 'Cước vận tải biển tăng đột biến 15%',
+    desc: 'Chi phí nhập hàng bằng đường biển tăng mạnh. Khuyến nghị đẩy nhanh các đơn đặt hàng còn trong kế hoạch và tăng lượng dự trữ cho các mặt hàng nhập khẩu chủ lực.',
   },
   {
     id: 7, type: 'warning', time: '2 ngày trước',
-    title: 'Sắp tới kỳ nghỉ lễ đối tác (Trung Quốc)',
-    desc: 'Gián đoạn chuỗi cung ứng 7 ngày. Đã tạm ẩn các cảnh báo "Overstock" trong tuần tới do các kho đang chủ động dồn hàng dự trữ.',
+    title: 'Đối tác Trung Quốc nghỉ lễ tuần tới',
+    desc: 'Nhà máy và cảng biển bên đó nghỉ khoảng 7 ngày, chuỗi cung ứng có thể bị chậm. Các kho hiện đang tích trữ hàng trước — chưa cần lo ngại nếu thấy tồn kho tăng tạm thời.',
   },
   {
     id: 8, type: 'info', time: '3 ngày trước',
-    title: 'Bản tin Thời tiết: Mùa mưa đến sớm',
-    desc: 'Dự báo nhu cầu thay thế cần gạt mưa và đèn sương mù tăng. Trọng số dow_factor cuối tuần đang được điều chỉnh tăng.',
+    title: 'Mùa mưa đến sớm hơn dự báo',
+    desc: 'Nhu cầu thay thế gạt mưa, đèn sương mù và các phụ kiện liên quan có thể tăng đột biến trong vài tuần tới. Nên chuẩn bị thêm hàng cho nhóm phụ kiện mùa mưa.',
   },
 ]
 
