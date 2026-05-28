@@ -61,6 +61,102 @@ async function exportCsv(params: URLSearchParams, filename: string, headers: str
   URL.revokeObjectURL(url)
 }
 
+function fmtDate(s: string) {
+  return new Date(s).toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' })
+}
+
+function ProposalSection({
+  proposals,
+  onApprove,
+  onReject,
+}: {
+  proposals: Proposal[]
+  onApprove: (id: string) => void
+  onReject:  (id: string) => void
+}) {
+  const pending = proposals.filter(p => p.status === 'pending')
+  const history = proposals.filter(p => p.status !== 'pending')
+
+  return (
+    <div className="bg-white rounded-xl border-2 border-amber-200 shadow-sm overflow-hidden">
+      {/* Section header */}
+      <div className="flex items-center justify-between px-5 py-4 border-b border-amber-100 bg-amber-50/60">
+        <div>
+          <p className="text-sm font-semibold text-slate-800">Đề xuất nhập hàng từ Kinh doanh</p>
+          <p className="text-xs text-slate-500 mt-0.5">
+            Kinh doanh gửi đề xuất từ trang Cảnh báo thiếu hàng — Quản lý phê duyệt tại đây
+          </p>
+        </div>
+        {pending.length > 0 && (
+          <span className="text-sm font-bold text-amber-700 bg-amber-100 border border-amber-300 px-3 py-1 rounded-full">
+            {pending.length} chờ duyệt
+          </span>
+        )}
+      </div>
+
+      {proposals.length === 0 ? (
+        <div className="px-5 py-10 text-center">
+          <Clock size={28} className="text-slate-300 mx-auto mb-2" />
+          <p className="text-sm text-slate-400">Chưa có đề xuất nào</p>
+          <p className="text-xs text-slate-300 mt-1">Khi Kinh doanh gửi đề xuất, chúng sẽ hiện ở đây</p>
+        </div>
+      ) : (
+        <table className="w-full">
+          <thead className="bg-slate-50 border-b border-slate-100">
+            <tr>
+              {['Mã SKU', 'Số lượng', 'Ghi chú', 'Ngày gửi', 'Trạng thái', 'Thao tác'].map((h, i) => (
+                <th key={i} className="px-4 py-3 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-wider">{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {pending.map(p => (
+              <tr key={p.id} className="bg-amber-50/50 hover:bg-amber-50 transition-colors">
+                <td className="px-4 py-3 font-mono text-sm font-semibold text-slate-800">{p.sku}</td>
+                <td className="px-4 py-3 text-sm text-slate-700 font-medium">{p.qty.toLocaleString()}</td>
+                <td className="px-4 py-3 text-xs text-slate-500 max-w-[200px]">{p.note || <span className="italic text-slate-300">—</span>}</td>
+                <td className="px-4 py-3 text-xs text-slate-400 whitespace-nowrap">{fmtDate(p.submittedAt)}</td>
+                <td className="px-4 py-3">
+                  <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
+                    <Clock size={10} /> Chờ duyệt
+                  </span>
+                </td>
+                <td className="px-4 py-3">
+                  <div className="flex gap-3">
+                    <button onClick={() => onApprove(p.id)}
+                      className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 hover:text-emerald-900 transition-colors">
+                      <CheckCircle size={14} /> Phê duyệt
+                    </button>
+                    <button onClick={() => onReject(p.id)}
+                      className="inline-flex items-center gap-1 text-xs font-semibold text-red-600 hover:text-red-800 transition-colors">
+                      <XCircle size={14} /> Từ chối
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+            {history.map(p => (
+              <tr key={p.id} className="opacity-55 hover:opacity-80 transition-opacity">
+                <td className="px-4 py-3 font-mono text-sm text-slate-600">{p.sku}</td>
+                <td className="px-4 py-3 text-sm text-slate-500">{p.qty.toLocaleString()}</td>
+                <td className="px-4 py-3 text-xs text-slate-400 max-w-[200px]">{p.note || '—'}</td>
+                <td className="px-4 py-3 text-xs text-slate-400 whitespace-nowrap">{fmtDate(p.submittedAt)}</td>
+                <td className="px-4 py-3">
+                  {p.status === 'approved'
+                    ? <span className="inline-flex items-center gap-1 text-xs text-emerald-700"><CheckCircle size={11} /> Đã duyệt</span>
+                    : <span className="inline-flex items-center gap-1 text-xs text-red-600"><XCircle size={11} /> Từ chối</span>
+                  }
+                </td>
+                <td className="px-4 py-3 text-xs text-slate-400 italic">{p.reviewNote ?? ''}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
+  )
+}
+
 export default function GovernancePage() {
   const [kpis, setKpis]         = useState<KpiSummary | null>(null)
   const [segments, setSegments] = useState<Segments | null>(null)
@@ -144,97 +240,11 @@ export default function GovernancePage() {
       </div>
 
       {/* ── Proposals section ───────────────────────────────────── */}
-      {(() => {
-        const pending  = proposals.filter(p => p.status === 'pending')
-        const history  = proposals.filter(p => p.status !== 'pending')
-        const fmtDate  = (s: string) => new Date(s).toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' })
-
-        return (
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-widest">
-                Đề xuất nhập hàng
-              </h2>
-              {pending.length > 0 && (
-                <span className="text-xs font-semibold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
-                  {pending.length} chờ phê duyệt
-                </span>
-              )}
-            </div>
-
-            {proposals.length === 0 ? (
-              <div className="bg-white rounded-xl border border-slate-100 shadow-sm px-5 py-8 text-center text-sm text-slate-400">
-                Chưa có đề xuất nào từ bộ phận Kinh doanh
-              </div>
-            ) : (
-              <div className="bg-white rounded-xl border border-slate-100 shadow-sm shadow-slate-200/50 overflow-hidden">
-                <table className="w-full">
-                  <thead className="bg-slate-50 border-b border-slate-100">
-                    <tr>
-                      {['Mã SKU', 'Số lượng', 'Ghi chú', 'Ngày gửi', 'Trạng thái', ''].map(h => (
-                        <th key={h} className="px-4 py-3 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-wider">{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {/* Pending first */}
-                    {pending.map(p => (
-                      <tr key={p.id} className="bg-amber-50/40 hover:bg-amber-50 transition-colors">
-                        <td className="px-4 py-3 font-mono text-sm font-semibold text-slate-800">{p.sku}</td>
-                        <td className="px-4 py-3 text-sm text-slate-700">{p.qty.toLocaleString()}</td>
-                        <td className="px-4 py-3 text-xs text-slate-500 max-w-xs">{p.note || <span className="italic text-slate-300">—</span>}</td>
-                        <td className="px-4 py-3 text-xs text-slate-400 whitespace-nowrap">{fmtDate(p.submittedAt)}</td>
-                        <td className="px-4 py-3">
-                          <span className="inline-flex items-center gap-1 text-xs text-amber-700">
-                            <Clock size={11} /> Chờ duyệt
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 whitespace-nowrap">
-                          <div className="flex gap-2">
-                            <button
-                              onClick={() => { setReviewNote(''); setReviewModal({ id: p.id, type: 'approve' }) }}
-                              className="inline-flex items-center gap-1 text-xs font-medium text-emerald-700 hover:text-emerald-900"
-                            >
-                              <CheckCircle size={13} /> Phê duyệt
-                            </button>
-                            <button
-                              onClick={() => { setReviewNote(''); setReviewModal({ id: p.id, type: 'reject' }) }}
-                              className="inline-flex items-center gap-1 text-xs font-medium text-red-600 hover:text-red-800"
-                            >
-                              <XCircle size={13} /> Từ chối
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                    {/* History */}
-                    {history.map(p => (
-                      <tr key={p.id} className="opacity-60 hover:opacity-80 transition-opacity">
-                        <td className="px-4 py-3 font-mono text-sm text-slate-600">{p.sku}</td>
-                        <td className="px-4 py-3 text-sm text-slate-500">{p.qty.toLocaleString()}</td>
-                        <td className="px-4 py-3 text-xs text-slate-400 max-w-xs">{p.note || '—'}</td>
-                        <td className="px-4 py-3 text-xs text-slate-400 whitespace-nowrap">{fmtDate(p.submittedAt)}</td>
-                        <td className="px-4 py-3">
-                          {p.status === 'approved' ? (
-                            <span className="inline-flex items-center gap-1 text-xs text-emerald-700">
-                              <CheckCircle size={11} /> Đã duyệt
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 text-xs text-red-600">
-                              <XCircle size={11} /> Từ chối
-                            </span>
-                          )}
-                        </td>
-                        <td className="px-4 py-3 text-xs text-slate-400 italic">{p.reviewNote ?? ''}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        )
-      })()}
+      <ProposalSection
+        proposals={proposals}
+        onApprove={(id) => { setReviewNote(''); setReviewModal({ id, type: 'approve' }) }}
+        onReject={(id)  => { setReviewNote(''); setReviewModal({ id, type: 'reject'  }) }}
+      />
 
       {/* System KPIs */}
       <div>
