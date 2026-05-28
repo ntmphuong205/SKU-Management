@@ -31,7 +31,7 @@ export const ROLES: Record<RoleId, RoleMeta> = {
     bg: 'bg-blue-50 border-blue-200',
     nav: [
       { href: '/',         label: 'Dashboard bán hàng',   icon: LayoutDashboard },
-      { href: '/chi-tiet', label: 'Forecast doanh số',    icon: TrendingUp      },
+      { href: '/chi-tiet', label: 'Dự báo doanh số',      icon: TrendingUp      },
       { href: '/canh-bao', label: 'Cảnh báo thiếu hàng', icon: AlertTriangle   },
       { href: '/tro-ly',   label: 'Trợ lý AI',            icon: Sparkles        },
     ],
@@ -45,7 +45,7 @@ export const ROLES: Record<RoleId, RoleMeta> = {
     nav: [
       { href: '/canh-bao',  label: 'Risk Monitor',         icon: AlertTriangle },
       { href: '/danh-sach', label: 'Tồn kho & Hoàn hàng', icon: Package       },
-      { href: '/mo-phong',  label: 'Inventory Simulator',  icon: PackageCheck  },
+      { href: '/mo-phong',  label: 'Mô phỏng tồn kho',    icon: PackageCheck  },
       { href: '/tro-ly',    label: 'Trợ lý AI',            icon: Sparkles      },
     ],
   },
@@ -61,7 +61,7 @@ export const ROLES: Record<RoleId, RoleMeta> = {
       { href: '/danh-sach',  label: 'Danh sách SKU',      icon: List            },
       { href: '/chi-tiet',   label: 'Dự báo chi tiết',    icon: Search          },
       { href: '/mo-phong',   label: 'Tối ưu tồn kho',     icon: PackageCheck    },
-      { href: '/governance', label: 'Governance',          icon: BarChart3       },
+      { href: '/governance', label: 'Quản trị hệ thống',   icon: BarChart3       },
       { href: '/tro-ly',     label: 'Trợ lý AI',          icon: Sparkles        },
     ],
   },
