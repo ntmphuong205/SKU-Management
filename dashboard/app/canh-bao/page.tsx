@@ -1,10 +1,11 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
-import { AlertTriangle, Download } from 'lucide-react'
+import { AlertTriangle, Download, Lock } from 'lucide-react'
 import Link from 'next/link'
 import StatusBadge, { IntelBadges } from '@/components/StatusBadge'
 import { ACTION_LABEL } from '@/lib/types'
+import { useRole } from '@/context/RoleContext'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip,
   ResponsiveContainer, Cell, LabelList,
@@ -36,6 +37,9 @@ const URGENT_ACTIONS = [
 ]
 
 export default function CanhBao() {
+  const { role } = useRole()
+  const isSalesReadonly = role === 'sales'
+
   const [rows, setRows]   = useState<Row[]>([])
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
@@ -44,6 +48,9 @@ export default function CanhBao() {
   const [totalCounts, setTotalCounts] = useState({ urgent: 0, review: 0, returns: 0, slow: 0 })
   const [countsLoaded, setCountsLoaded] = useState(false)
   const LIMIT = 30
+
+  // For sales, always lock to stockout-only
+  const effectiveFilter = isSalesReadonly ? 'Prioritize replenishment' : actionFilter
 
   useEffect(() => {
     async function fetchCounts() {
@@ -71,7 +78,7 @@ export default function CanhBao() {
       limit: String(LIMIT), page: String(page),
       actionable: 'true',
     })
-    if (actionFilter) params.set('action', actionFilter)
+    if (effectiveFilter) params.set('action', effectiveFilter)
 
     fetch(`/api/skus?${params}`)
       .then(r => r.json())
@@ -80,7 +87,7 @@ export default function CanhBao() {
         setTotal(d.total)
         setLoading(false)
       })
-  }, [page, actionFilter])
+  }, [page, effectiveFilter])
 
   useEffect(() => { load() }, [load])
 
@@ -129,35 +136,60 @@ export default function CanhBao() {
       {/* Header */}
       <div className="border-b border-slate-200 pb-4 flex items-start justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-slate-800">Phân tích rủi ro tồn kho</h1>
-          <p className="text-sm text-slate-500 mt-0.5">Phát hiện sớm rủi ro · Dự báo nhu cầu · Đề xuất hành động tối ưu</p>
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl font-semibold text-slate-800">
+              {isSalesReadonly ? 'Cảnh báo thiếu hàng' : 'Phân tích rủi ro tồn kho'}
+            </h1>
+            {isSalesReadonly && (
+              <span className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-500 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-full">
+                <Lock size={10} /> Chỉ xem
+              </span>
+            )}
+          </div>
+          <p className="text-sm text-slate-500 mt-0.5">
+            {isSalesReadonly
+              ? 'Danh sách SKU có nguy cơ hết hàng — dữ liệu chỉ xem'
+              : 'Phát hiện sớm rủi ro · Dự báo nhu cầu · Đề xuất hành động tối ưu'}
+          </p>
         </div>
-        <button
-          onClick={handleExport}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-600 border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors"
-        >
-          <Download size={13} /> Xuất CSV
-        </button>
+        {!isSalesReadonly && (
+          <button
+            onClick={handleExport}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-600 border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors"
+          >
+            <Download size={13} /> Xuất CSV
+          </button>
+        )}
       </div>
 
       {/* Summary counts */}
-      <div className="grid grid-cols-4 gap-3">
-        {[
-          { label: '🔴 Nhập hàng ngay',      count: totalCounts.urgent,   bg: 'bg-red-50 border-red-200 text-red-800',           action: 'Prioritize replenishment'   },
-          { label: '🔵 Cần xem xét',          count: totalCounts.review,   bg: 'bg-blue-50 border-blue-200 text-blue-800',        action: 'Review with Sales'          },
-          { label: '🟣 Kiểm tra hoàn hàng',   count: totalCounts.returns,  bg: 'bg-purple-50 border-purple-200 text-purple-800',  action: 'Check return/quality issue' },
-          { label: '⚪ Hàng tồn chậm',        count: totalCounts.slow,     bg: 'bg-slate-50 border-slate-200 text-slate-700',     action: 'Review slow-moving stock'   },
-        ].map(s => (
-          <button
-            key={s.label}
-            onClick={() => { setActionFilter(s.action === actionFilter ? '' : s.action); setPage(1) }}
-            className={`rounded-lg border px-4 py-3 text-left transition-all ${s.bg} ${actionFilter === s.action ? 'ring-2 ring-offset-1 ring-slate-400' : 'hover:opacity-80'}`}
-          >
-            <p className="text-xs font-medium">{s.label}</p>
-            <p className="text-2xl font-bold mt-0.5">{countsLoaded ? s.count : '…'}</p>
-          </button>
-        ))}
-      </div>
+      {isSalesReadonly ? (
+        <div className="grid grid-cols-1 gap-3">
+          <div className="rounded-lg border px-4 py-3 bg-red-50 border-red-200 text-red-800">
+            <p className="text-xs font-medium">SKU có nguy cơ hết hàng</p>
+            <p className="text-2xl font-bold mt-0.5">{countsLoaded ? totalCounts.urgent : '…'}</p>
+            <p className="text-xs text-red-600 mt-0.5">Cần kiểm tra với Logistics để đặt hàng kịp thời</p>
+          </div>
+        </div>
+      ) : (
+        <div className="grid grid-cols-4 gap-3">
+          {[
+            { label: '🔴 Nhập hàng ngay',      count: totalCounts.urgent,   bg: 'bg-red-50 border-red-200 text-red-800',           action: 'Prioritize replenishment'   },
+            { label: '🔵 Cần xem xét',          count: totalCounts.review,   bg: 'bg-blue-50 border-blue-200 text-blue-800',        action: 'Review with Sales'          },
+            { label: '🟣 Kiểm tra hoàn hàng',   count: totalCounts.returns,  bg: 'bg-purple-50 border-purple-200 text-purple-800',  action: 'Check return/quality issue' },
+            { label: '⚪ Hàng tồn chậm',        count: totalCounts.slow,     bg: 'bg-slate-50 border-slate-200 text-slate-700',     action: 'Review slow-moving stock'   },
+          ].map(s => (
+            <button
+              key={s.label}
+              onClick={() => { setActionFilter(s.action === actionFilter ? '' : s.action); setPage(1) }}
+              className={`rounded-lg border px-4 py-3 text-left transition-all ${s.bg} ${actionFilter === s.action ? 'ring-2 ring-offset-1 ring-slate-400' : 'hover:opacity-80'}`}
+            >
+              <p className="text-xs font-medium">{s.label}</p>
+              <p className="text-2xl font-bold mt-0.5">{countsLoaded ? s.count : '…'}</p>
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Risk distribution chart */}
       <div className="bg-white rounded-xl border border-slate-100 shadow-sm shadow-slate-200/50 p-5">
@@ -190,26 +222,28 @@ export default function CanhBao() {
         </ResponsiveContainer>
       </div>
 
-      {/* Filter bar */}
-      <div className="flex items-center gap-3 bg-white rounded-xl border border-slate-100 shadow-sm shadow-slate-200/50 px-4 py-3">
-        <AlertTriangle size={15} className="text-slate-400 shrink-0" />
-        <span className="text-sm text-slate-500 shrink-0">Lọc theo hành động:</span>
-        <div className="flex gap-2 flex-wrap">
-          {actionOptions.map(o => (
-            <button
-              key={o.value}
-              onClick={() => { setActionFilter(o.value); setPage(1) }}
-              className={`px-3 py-1 text-xs rounded-full border transition-colors ${
-                actionFilter === o.value
-                  ? 'bg-slate-800 text-white border-slate-800'
-                  : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-50'
-              }`}
-            >
-              {o.label}
-            </button>
-          ))}
+      {/* Filter bar — hidden for sales read-only */}
+      {!isSalesReadonly && (
+        <div className="flex items-center gap-3 bg-white rounded-xl border border-slate-100 shadow-sm shadow-slate-200/50 px-4 py-3">
+          <AlertTriangle size={15} className="text-slate-400 shrink-0" />
+          <span className="text-sm text-slate-500 shrink-0">Lọc theo hành động:</span>
+          <div className="flex gap-2 flex-wrap">
+            {actionOptions.map(o => (
+              <button
+                key={o.value}
+                onClick={() => { setActionFilter(o.value); setPage(1) }}
+                className={`px-3 py-1 text-xs rounded-full border transition-colors ${
+                  actionFilter === o.value
+                    ? 'bg-slate-800 text-white border-slate-800'
+                    : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-50'
+                }`}
+              >
+                {o.label}
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Legend */}
       <div className="flex gap-4 text-xs text-slate-500">
@@ -227,7 +261,8 @@ export default function CanhBao() {
               <tr>
                 {[
                   'Mã SKU', 'Hành động', 'Phân khúc',
-                  'Dự báo 28 ngày', 'Dự báo 56 ngày', 'Đề xuất đặt',
+                  'Dự báo 28 ngày', 'Dự báo 56 ngày',
+                  ...(!isSalesReadonly ? ['Đề xuất đặt'] : []),
                   'Đặc điểm nhu cầu', 'Lý do',
                 ].map(h => (
                   <th key={h} className="px-4 py-3 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
@@ -238,9 +273,9 @@ export default function CanhBao() {
             </thead>
             <tbody className="divide-y divide-slate-100">
               {loading ? (
-                <tr><td colSpan={8} className="px-4 py-8 text-center text-sm text-slate-400">Đang tải…</td></tr>
+                <tr><td colSpan={isSalesReadonly ? 7 : 8} className="px-4 py-8 text-center text-sm text-slate-400">Đang tải…</td></tr>
               ) : rows.length === 0 ? (
-                <tr><td colSpan={8} className="px-4 py-8 text-center text-sm text-slate-400">Không có dữ liệu</td></tr>
+                <tr><td colSpan={isSalesReadonly ? 7 : 8} className="px-4 py-8 text-center text-sm text-slate-400">Không có dữ liệu</td></tr>
               ) : rows.map(r => (
                 <tr key={r.ItemCode} className="hover:bg-slate-50 transition-colors">
                   <td className="px-4 py-3 font-mono text-sm font-medium text-slate-800">
@@ -263,14 +298,16 @@ export default function CanhBao() {
                   <td className="px-4 py-3 text-right text-sm text-slate-700">
                     {r.forecast_56d_total?.toLocaleString(undefined,{maximumFractionDigits:1})}
                   </td>
-                  <td className="px-4 py-3 text-right text-sm font-semibold">
-                    {r.forecast_28d_validation > 0 &&
-                     ['Prioritize replenishment', 'Review with Sales', 'Manual review required'].includes(r.recommended_action)
-                      ? <span className={r.recommended_action === 'Prioritize replenishment' ? 'text-red-700' : 'text-blue-700'}>
-                          {r.forecast_28d_validation.toLocaleString(undefined, {maximumFractionDigits: 0})}
-                        </span>
-                      : <span className="text-slate-400">—</span>}
-                  </td>
+                  {!isSalesReadonly && (
+                    <td className="px-4 py-3 text-right text-sm font-semibold">
+                      {r.forecast_28d_validation > 0 &&
+                       ['Prioritize replenishment', 'Review with Sales', 'Manual review required'].includes(r.recommended_action)
+                        ? <span className={r.recommended_action === 'Prioritize replenishment' ? 'text-red-700' : 'text-blue-700'}>
+                            {r.forecast_28d_validation.toLocaleString(undefined, {maximumFractionDigits: 0})}
+                          </span>
+                        : <span className="text-slate-400">—</span>}
+                    </td>
+                  )}
                   <td className="px-4 py-3 whitespace-nowrap">
                     <StatusBadge value={r.reliability_tag} type="reliability" />
                   </td>
