@@ -123,7 +123,7 @@ export default function TongQuan() {
               <span className="text-xs font-medium text-blue-300">Dự báo đang chạy · F1–F56</span>
             </div>
             <h1 className="text-2xl font-bold text-white leading-tight">
-              {isSales ? 'Dashboard bán hàng' : 'Demand Forecast Intelligence'}
+              {isSales ? 'Dashboard bán hàng' : 'Hệ thống Dự báo Nhu cầu'}
             </h1>
             <p className="text-slate-400 text-sm mt-1">
               {isSales

@@ -1,9 +1,10 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { Bell, AlertCircle, AlertTriangle, Info } from 'lucide-react'
+import { Bell, AlertCircle, AlertTriangle, Info, LogOut, RefreshCw } from 'lucide-react'
 import { useRole } from '@/context/RoleContext'
 import { ROLES } from '@/lib/roles'
+import { useRouter } from 'next/navigation'
 
 type SignalType = 'critical' | 'warning' | 'info'
 
@@ -82,20 +83,36 @@ const TYPE_CFG = {
   },
 }
 
+const PROFILE = {
+  name:   'Nguyễn Anh Phong',
+  initials: 'AP',
+  email:  'a.phong@autoparts.vn',
+  dept:   'AutoParts FIP · 2024',
+}
+
 export default function Topbar() {
-  const [open, setOpen]       = useState(false)
-  const [readIds, setReadIds] = useState<Set<number>>(new Set())
-  const ref = useRef<HTMLDivElement>(null)
-  const { role } = useRole()
+  const [open, setOpen]             = useState(false)
+  const [profileOpen, setProfileOpen] = useState(false)
+  const [readIds, setReadIds]       = useState<Set<number>>(new Set())
+  const bellRef    = useRef<HTMLDivElement>(null)
+  const profileRef = useRef<HTMLDivElement>(null)
+  const { role, setRole } = useRole()
   const roleMeta = role ? ROLES[role] : null
+  const router = useRouter()
 
   useEffect(() => {
     function onMouseDown(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+      if (bellRef.current    && !bellRef.current.contains(e.target as Node))    setOpen(false)
+      if (profileRef.current && !profileRef.current.contains(e.target as Node)) setProfileOpen(false)
     }
     document.addEventListener('mousedown', onMouseDown)
     return () => document.removeEventListener('mousedown', onMouseDown)
   }, [])
+
+  function handleLogout() {
+    setRole(null)
+    router.push('/login')
+  }
 
   const unread = macroSignals.filter(s => !readIds.has(s.id)).length
 
@@ -111,7 +128,7 @@ export default function Topbar() {
     <header className="fixed top-0 left-56 right-0 h-14 z-20 bg-white border-b border-slate-200 flex items-center justify-end px-6 gap-3">
 
       {/* Notification Bell */}
-      <div className="relative" ref={ref}>
+      <div className="relative" ref={bellRef}>
         <button
           onClick={() => setOpen(v => !v)}
           className="relative w-9 h-9 rounded-full flex items-center justify-center hover:bg-slate-100 transition-colors text-slate-500"
@@ -189,9 +206,72 @@ export default function Topbar() {
         </span>
       )}
 
-      {/* Avatar */}
-      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-slate-600 to-slate-800 flex items-center justify-center text-white text-xs font-semibold cursor-pointer select-none">
-        AP
+      {/* Avatar + profile dropdown */}
+      <div className="relative" ref={profileRef}>
+        <button
+          onClick={() => setProfileOpen(v => !v)}
+          className="w-8 h-8 rounded-full bg-gradient-to-br from-slate-600 to-slate-800 flex items-center justify-center text-white text-xs font-semibold cursor-pointer select-none hover:opacity-90 transition-opacity"
+        >
+          {PROFILE.initials}
+        </button>
+
+        {profileOpen && (
+          <div className="absolute right-0 top-11 w-64 bg-white border border-slate-200 rounded-xl shadow-xl shadow-slate-300/30 overflow-hidden">
+            {/* Profile header */}
+            <div className="px-4 py-4 bg-slate-50/60 border-b border-slate-100">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-slate-600 to-slate-800 flex items-center justify-center text-white text-sm font-bold shrink-0">
+                  {PROFILE.initials}
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-slate-800 truncate">{PROFILE.name}</p>
+                  <p className="text-[11px] text-slate-400 truncate">{PROFILE.email}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Profile fields */}
+            <div className="px-4 py-3 space-y-2.5 border-b border-slate-100">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] text-slate-400">Vai trò</span>
+                {roleMeta && (
+                  <span className={`text-xs font-medium px-2 py-0.5 rounded-full border ${roleMeta.bg} ${roleMeta.color}`}>
+                    {roleMeta.label}
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] text-slate-400">Hệ thống</span>
+                <span className="text-[11px] text-slate-600">{PROFILE.dept}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] text-slate-400">Trạng thái</span>
+                <span className="inline-flex items-center gap-1 text-[11px] text-emerald-600">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                  Đang hoạt động
+                </span>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="px-2 py-2 space-y-0.5">
+              <button
+                onClick={() => { setProfileOpen(false); router.push('/login') }}
+                className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-slate-600 hover:bg-slate-50 rounded-lg transition-colors"
+              >
+                <RefreshCw size={13} className="text-slate-400" />
+                Đổi vai trò
+              </button>
+              <button
+                onClick={handleLogout}
+                className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+              >
+                <LogOut size={13} className="text-red-400" />
+                Đăng xuất
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </header>
   )
