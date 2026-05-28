@@ -226,9 +226,9 @@ export default function CanhBao() {
             <thead className="bg-slate-50 border-b border-slate-100">
               <tr>
                 {[
-                  'Mã SKU', 'Hành động',
+                  'Mã SKU', 'Hành động', 'Phân khúc',
                   'Dự báo 28 ngày', 'Dự báo 56 ngày', 'Đề xuất đặt',
-                  'Lý do',
+                  'Đặc điểm nhu cầu', 'Lý do',
                 ].map(h => (
                   <th key={h} className="px-4 py-3 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
                     {h}
@@ -238,9 +238,9 @@ export default function CanhBao() {
             </thead>
             <tbody className="divide-y divide-slate-100">
               {loading ? (
-                <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-slate-400">Đang tải…</td></tr>
+                <tr><td colSpan={8} className="px-4 py-8 text-center text-sm text-slate-400">Đang tải…</td></tr>
               ) : rows.length === 0 ? (
-                <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-slate-400">Không có dữ liệu</td></tr>
+                <tr><td colSpan={8} className="px-4 py-8 text-center text-sm text-slate-400">Không có dữ liệu</td></tr>
               ) : rows.map(r => (
                 <tr key={r.ItemCode} className="hover:bg-slate-50 transition-colors">
                   <td className="px-4 py-3 font-mono text-sm font-medium text-slate-800">
@@ -248,8 +248,14 @@ export default function CanhBao() {
                       {r.ItemCode}
                     </Link>
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3 whitespace-nowrap">
                     <StatusBadge value={r.recommended_action} type="action" />
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex flex-col gap-0.5">
+                      <StatusBadge value={r.demand_class} type="demand" />
+                      <StatusBadge value={r.profit_segment} type="profit" />
+                    </div>
                   </td>
                   <td className="px-4 py-3 text-right text-sm text-slate-700">
                     {r.forecast_28d_validation?.toLocaleString(undefined,{maximumFractionDigits:1})}
@@ -260,10 +266,13 @@ export default function CanhBao() {
                   <td className="px-4 py-3 text-right text-sm font-semibold">
                     {r.forecast_28d_validation > 0 &&
                      ['Prioritize replenishment', 'Review with Sales', 'Manual review required'].includes(r.recommended_action)
-                      ? <span className={r.recommended_action === 'Prioritize replenishment' ? 'text-red-700' : 'text-amber-600'}>
+                      ? <span className={r.recommended_action === 'Prioritize replenishment' ? 'text-red-700' : 'text-blue-700'}>
                           {r.forecast_28d_validation.toLocaleString(undefined, {maximumFractionDigits: 0})}
                         </span>
                       : <span className="text-slate-400">—</span>}
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    <StatusBadge value={r.reliability_tag} type="reliability" />
                   </td>
                   <td className="px-4 py-3 text-xs text-slate-500 max-w-xs">
                     {r.reason_codes?.split(' | ').slice(0,2).map(reasonVN).join(' · ')}

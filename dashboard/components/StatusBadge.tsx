@@ -9,19 +9,19 @@ interface Props {
 
 const ACTION_DOT: Record<string, string> = {
   'Prioritize replenishment':   'bg-red-500',
-  'Review with Sales':          'bg-amber-400',
-  'Manual review required':     'bg-amber-400',
+  'Review with Sales':          'bg-blue-500',
+  'Manual review required':     'bg-blue-500',
   'Check return/quality issue': 'bg-purple-500',
-  'Review slow-moving stock':   'bg-sky-500',
-  'Do not replenish':           'bg-slate-400',
+  'Review slow-moving stock':   'bg-slate-400',
+  'Do not replenish':           'bg-slate-300',
 }
 const ACTION_TEXT: Record<string, string> = {
   'Prioritize replenishment':   'text-red-700 font-semibold',
-  'Review with Sales':          'text-amber-700',
-  'Manual review required':     'text-amber-700',
+  'Review with Sales':          'text-blue-700',
+  'Manual review required':     'text-blue-700',
   'Check return/quality issue': 'text-purple-700',
-  'Review slow-moving stock':   'text-sky-700',
-  'Do not replenish':           'text-slate-500',
+  'Review slow-moving stock':   'text-slate-600',
+  'Do not replenish':           'text-slate-400',
 }
 
 const DEMAND_TEXT: Record<string, string> = {

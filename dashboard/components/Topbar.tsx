@@ -1,22 +1,10 @@
 'use client'
 
-import { Bell, Search } from 'lucide-react'
+import { Bell } from 'lucide-react'
 
 export default function Topbar() {
   return (
-    <header className="fixed top-0 left-56 right-0 h-14 z-20 bg-white border-b border-slate-200 flex items-center px-6 gap-4">
-
-      {/* Search */}
-      <div className="relative flex-1 max-w-sm">
-        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-        <input
-          type="text"
-          placeholder="Tìm SKU, sản phẩm, đơn hàng…"
-          className="w-full pl-9 pr-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition-colors placeholder:text-slate-400"
-        />
-      </div>
-
-      <div className="flex-1" />
+    <header className="fixed top-0 left-56 right-0 h-14 z-20 bg-white border-b border-slate-200 flex items-center justify-end px-6 gap-3">
 
       {/* Right actions */}
       <div className="flex items-center gap-3">
