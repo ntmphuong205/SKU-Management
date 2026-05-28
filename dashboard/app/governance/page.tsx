@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
-import { Download, ShieldCheck, BarChart3, AlertTriangle, Package, CheckCircle, XCircle, Clock, Database, RefreshCw, Wifi, WifiOff, Play } from 'lucide-react'
+import { Download, ShieldCheck, BarChart3, AlertTriangle, Package, CheckCircle, XCircle, Clock, Database, RefreshCw, Wifi, WifiOff, Play, TrendingUp, TrendingDown, Activity } from 'lucide-react'
 import { getProposals, updateProposal, type Proposal } from '@/lib/proposals'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
@@ -243,6 +243,170 @@ function IngestionPanel() {
   )
 }
 
+interface DriftItem {
+  sku: string
+  recent_avg: number
+  older_avg: number
+  pct_change: number
+  direction: 'up' | 'down'
+  severity: 'high' | 'medium'
+}
+
+interface DriftData {
+  source: 'live' | 'offline' | 'demo'
+  window_days?: number
+  detected_at?: string
+  drifting_skus?: number
+  items?: DriftItem[]
+}
+
+const DEMO_DRIFT: DriftData = {
+  source: 'demo',
+  window_days: 30,
+  detected_at: new Date().toISOString(),
+  drifting_skus: 7,
+  items: [
+    { sku: 'AP-1001', recent_avg: 18.4, older_avg: 7.2,  pct_change:  155.6, direction: 'up',   severity: 'high'   },
+    { sku: 'BP-0021', recent_avg: 2.1,  older_avg: 11.8, pct_change:  -82.2, direction: 'down', severity: 'high'   },
+    { sku: 'FP-5502', recent_avg: 9.3,  older_avg: 3.8,  pct_change:  144.7, direction: 'up',   severity: 'high'   },
+    { sku: 'AP-3001', recent_avg: 5.6,  older_avg: 9.4,  pct_change:  -40.4, direction: 'down', severity: 'medium' },
+    { sku: 'BP-0011', recent_avg: 14.2, older_avg: 8.7,  pct_change:   63.2, direction: 'up',   severity: 'medium' },
+    { sku: 'FP-5505', recent_avg: 1.8,  older_avg: 6.3,  pct_change:  -71.4, direction: 'down', severity: 'high'   },
+    { sku: 'AP-2002', recent_avg: 11.0, older_avg: 6.5,  pct_change:   69.2, direction: 'up',   severity: 'medium' },
+  ],
+}
+
+function DriftPanel() {
+  const [data, setData]     = useState<DriftData | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [expanded, setExpanded] = useState(false)
+
+  const reload = useCallback(async () => {
+    setLoading(true)
+    try {
+      const res = await fetch('/api/drift')
+      const json = await res.json()
+      setData(json.source === 'offline' ? DEMO_DRIFT : json)
+    } catch {
+      setData(DEMO_DRIFT)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => { reload() }, [reload])
+
+  const items   = data?.items ?? []
+  const highCnt = items.filter(i => i.severity === 'high').length
+  const isDemo  = data?.source === 'demo'
+
+  return (
+    <div className="bg-white rounded-xl border-2 border-violet-200 shadow-sm overflow-hidden">
+      {/* Header */}
+      <div className="flex items-center justify-between px-5 py-4 border-b border-violet-100 bg-violet-50/60">
+        <div className="flex items-center gap-2">
+          <Activity size={15} className="text-violet-600" />
+          <div>
+            <p className="text-sm font-semibold text-slate-800">Phát hiện Concept Drift</p>
+            <p className="text-xs text-slate-500 mt-0.5">
+              So sánh nhu cầu {data?.window_days ?? 30} ngày gần nhất vs {data?.window_days ?? 30} ngày trước đó
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          {highCnt > 0 && (
+            <span className="text-xs font-bold text-red-700 bg-red-100 border border-red-200 px-2.5 py-1 rounded-full">
+              {highCnt} SKU drift mạnh
+            </span>
+          )}
+          {isDemo
+            ? <span className="flex items-center gap-1 text-xs text-amber-500"><Database size={11} /> Demo</span>
+            : <span className="flex items-center gap-1 text-xs text-emerald-600"><Wifi size={11} /> Live</span>
+          }
+          <button onClick={reload} disabled={loading}
+            className="p-1.5 rounded-lg hover:bg-violet-100 text-violet-500 disabled:opacity-40 transition-colors">
+            <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
+          </button>
+        </div>
+      </div>
+
+      {items.length === 0 ? (
+        <div className="px-5 py-8 text-center">
+          <CheckCircle size={24} className="mx-auto text-emerald-300 mb-2" />
+          <p className="text-sm text-slate-400">Không phát hiện drift</p>
+          <p className="text-xs text-slate-300 mt-1">Nhu cầu các SKU ổn định trong {data?.window_days ?? 30} ngày qua</p>
+        </div>
+      ) : (
+        <div className="p-5 space-y-4">
+          {/* Summary bar */}
+          <div className="flex gap-3">
+            <div className="flex-1 bg-red-50 border border-red-100 rounded-lg p-3 text-center">
+              <p className="text-xs text-red-400">Drift mạnh (&gt;60%)</p>
+              <p className="text-2xl font-bold text-red-700 mt-0.5">{highCnt}</p>
+            </div>
+            <div className="flex-1 bg-amber-50 border border-amber-100 rounded-lg p-3 text-center">
+              <p className="text-xs text-amber-500">Drift vừa (30–60%)</p>
+              <p className="text-2xl font-bold text-amber-700 mt-0.5">{items.length - highCnt}</p>
+            </div>
+            <div className="flex-1 bg-emerald-50 border border-emerald-100 rounded-lg p-3 text-center">
+              <p className="text-xs text-emerald-500">Tăng nhu cầu</p>
+              <p className="text-2xl font-bold text-emerald-700 mt-0.5">{items.filter(i => i.direction === 'up').length}</p>
+            </div>
+            <div className="flex-1 bg-slate-50 border border-slate-100 rounded-lg p-3 text-center">
+              <p className="text-xs text-slate-400">Giảm nhu cầu</p>
+              <p className="text-2xl font-bold text-slate-700 mt-0.5">{items.filter(i => i.direction === 'down').length}</p>
+            </div>
+          </div>
+
+          {/* SKU table */}
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="border-b border-slate-100">
+                {['Mã SKU', 'TB 30 ngày trước', 'TB 30 ngày gần', 'Thay đổi', 'Mức độ'].map((h, i) => (
+                  <th key={i} className="py-2 pr-4 text-left font-semibold text-slate-400 uppercase text-[10px] tracking-wide">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-50">
+              {(expanded ? items : items.slice(0, 5)).map(item => (
+                <tr key={item.sku} className="hover:bg-slate-50">
+                  <td className="py-2 pr-4 font-mono font-semibold text-slate-800">{item.sku}</td>
+                  <td className="py-2 pr-4 text-slate-500">{item.older_avg.toFixed(1)} đv/ngày</td>
+                  <td className="py-2 pr-4 text-slate-700 font-medium">{item.recent_avg.toFixed(1)} đv/ngày</td>
+                  <td className="py-2 pr-4">
+                    <span className={`inline-flex items-center gap-1 font-bold ${item.direction === 'up' ? 'text-emerald-600' : 'text-red-600'}`}>
+                      {item.direction === 'up'
+                        ? <TrendingUp  size={13} />
+                        : <TrendingDown size={13} />}
+                      {item.pct_change > 0 ? '+' : ''}{item.pct_change.toFixed(1)}%
+                    </span>
+                  </td>
+                  <td className="py-2">
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
+                      item.severity === 'high'
+                        ? 'bg-red-100 text-red-700'
+                        : 'bg-amber-100 text-amber-700'
+                    }`}>
+                      {item.severity === 'high' ? 'Mạnh' : 'Vừa'}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+          {items.length > 5 && (
+            <button onClick={() => setExpanded(v => !v)}
+              className="text-xs text-violet-600 hover:underline">
+              {expanded ? 'Ẩn bớt' : `Xem thêm ${items.length - 5} SKU`}
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function ProposalSection({
   proposals,
   onApprove,
@@ -419,6 +583,9 @@ export default function GovernancePage() {
 
       {/* ── Ingestion pipeline ──────────────────────────────────── */}
       <IngestionPanel />
+
+      {/* ── Concept Drift Detection ─────────────────────────────── */}
+      <DriftPanel />
 
       {/* ── Proposals section ───────────────────────────────────── */}
       <ProposalSection
