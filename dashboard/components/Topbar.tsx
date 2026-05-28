@@ -2,6 +2,8 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { Bell, AlertCircle, AlertTriangle, Info } from 'lucide-react'
+import { useRole } from '@/context/RoleContext'
+import { ROLES } from '@/lib/roles'
 
 type SignalType = 'critical' | 'warning' | 'info'
 
@@ -84,6 +86,8 @@ export default function Topbar() {
   const [open, setOpen]       = useState(false)
   const [readIds, setReadIds] = useState<Set<number>>(new Set())
   const ref = useRef<HTMLDivElement>(null)
+  const { role } = useRole()
+  const roleMeta = role ? ROLES[role] : null
 
   useEffect(() => {
     function onMouseDown(e: MouseEvent) {
@@ -177,6 +181,13 @@ export default function Topbar() {
           </div>
         )}
       </div>
+
+      {/* Role chip */}
+      {roleMeta && (
+        <span className={`text-xs font-medium px-2.5 py-1 rounded-full border ${roleMeta.bg} ${roleMeta.color}`}>
+          {roleMeta.label}
+        </span>
+      )}
 
       {/* Avatar */}
       <div className="w-8 h-8 rounded-full bg-gradient-to-br from-slate-600 to-slate-800 flex items-center justify-center text-white text-xs font-semibold cursor-pointer select-none">

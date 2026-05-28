@@ -1,24 +1,23 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
-import {
-  LayoutDashboard, AlertTriangle, List,
-  Search, PackageCheck, Sparkles,
-  Settings, LogOut,
-} from 'lucide-react'
-
-const NAV = [
-  { href: '/',          label: 'Tổng quan',         icon: LayoutDashboard },
-  { href: '/canh-bao',  label: 'Phân tích rủi ro',  icon: AlertTriangle   },
-  { href: '/danh-sach', label: 'Danh sách SKU',      icon: List            },
-  { href: '/chi-tiet',  label: 'Dự báo chi tiết',   icon: Search          },
-  { href: '/mo-phong',  label: 'Tối ưu tồn kho',    icon: PackageCheck    },
-  { href: '/tro-ly',    label: 'Trợ lý AI',          icon: Sparkles        },
-]
+import { usePathname, useRouter } from 'next/navigation'
+import { Settings, LogOut } from 'lucide-react'
+import { useRole } from '@/context/RoleContext'
+import { ROLES } from '@/lib/roles'
 
 export default function Sidebar() {
   const pathname = usePathname()
+  const { role, setRole } = useRole()
+  const router = useRouter()
+
+  const meta = role ? ROLES[role] : null
+  const nav = meta?.nav ?? []
+
+  function handleLogout() {
+    setRole(null)
+    router.push('/login')
+  }
 
   return (
     <aside className="sidebar-bg fixed top-0 left-0 h-screen w-56 flex flex-col z-30 border-r border-slate-200">
@@ -36,7 +35,7 @@ export default function Sidebar() {
 
       {/* Nav */}
       <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
-        {NAV.map(({ href, label, icon: Icon }) => {
+        {nav.map(({ href, label, icon: Icon }) => {
           const active = href === '/' ? pathname === '/' : pathname.startsWith(href)
           return (
             <Link
@@ -59,13 +58,27 @@ export default function Sidebar() {
         })}
       </nav>
 
-      {/* Footer */}
-      <div className="px-3 py-3 border-t border-slate-100 space-y-0.5">
+      {/* Role badge + footer */}
+      <div className="px-3 py-3 border-t border-slate-100 space-y-2">
+        {meta && (
+          <div className={`px-3 py-2 rounded-lg border text-xs ${meta.bg}`}>
+            <p className={`font-semibold ${meta.color}`}>{meta.label}</p>
+            <button
+              onClick={handleLogout}
+              className="text-slate-400 hover:text-slate-600 mt-0.5 underline text-[11px]"
+            >
+              Đổi vai trò
+            </button>
+          </div>
+        )}
         <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-slate-500 hover:bg-slate-50 hover:text-slate-700 transition-colors">
           <Settings size={16} strokeWidth={1.8} className="text-slate-400" />
           <span>Cài đặt</span>
         </button>
-        <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-slate-500 hover:bg-slate-50 hover:text-slate-700 transition-colors">
+        <button
+          onClick={handleLogout}
+          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-slate-500 hover:bg-slate-50 hover:text-slate-700 transition-colors"
+        >
           <LogOut size={16} strokeWidth={1.8} className="text-slate-400" />
           <span>Đăng xuất</span>
         </button>

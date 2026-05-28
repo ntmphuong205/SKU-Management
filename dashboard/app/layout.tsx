@@ -1,8 +1,8 @@
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
-import Sidebar from '@/components/Sidebar'
-import Topbar from '@/components/Topbar'
+import { RoleProvider } from '@/context/RoleContext'
+import ClientShell from '@/components/ClientShell'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -15,12 +15,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="vi">
       <body className={`${inter.className} antialiased`}>
-        <Sidebar />
-        <Topbar />
-        {/* ml-56 = sidebar width, pt-14 = topbar height */}
-        <main className="ml-56 pt-14 min-h-screen">
-          {children}
-        </main>
+        <RoleProvider>
+          <ClientShell>{children}</ClientShell>
+        </RoleProvider>
       </body>
     </html>
   )
