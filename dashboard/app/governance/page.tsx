@@ -635,7 +635,7 @@ export default function GovernancePage() {
 
       {/* Risk overview */}
       <div>
-        <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-3">Theo dõi risk toàn hệ thống</h2>
+        <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-3">Theo dõi rủi ro toàn hệ thống</h2>
         <div className="grid grid-cols-4 gap-3">
           {[
             { label: 'Nhập hàng ngay',    count: riskCounts.urgent,  bg: 'bg-red-50 border-red-200 text-red-800',           icon: AlertTriangle },

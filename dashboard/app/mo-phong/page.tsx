@@ -332,7 +332,7 @@ function MoPhongContent() {
                       Điều chỉnh: {afpdAdj.toFixed(2)} đv/ngày
                     </p>
                   )}
-                  <p>Dự báo 56 ngày: {Math.round(selectedSkuData?.forecast_56d_total ?? afpdAdj * 56).toLocaleString()} units</p>
+                  <p>Dự báo 56 ngày: {Math.round(selectedSkuData?.forecast_56d_total ?? afpdAdj * 56).toLocaleString()} đv</p>
                 </div>
               )}
             </div>
@@ -382,7 +382,7 @@ function MoPhongContent() {
               </AreaChart>
             </ResponsiveContainer>
             <p className="text-[11px] text-slate-400 mt-2 text-center">
-              Đường đỏ đứt = ngưỡng safety stock. Khi tồn kho dự kiến xuống dưới ngưỡng này → cần đặt hàng.
+              Đường đỏ đứt = ngưỡng tồn kho an toàn. Khi tồn kho dự kiến xuống dưới ngưỡng này → cần đặt hàng.
             </p>
           </div>
         </div>

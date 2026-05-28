@@ -134,11 +134,11 @@ export default function TongQuan() {
 
           <div className="flex gap-6 flex-wrap">
             {(isSales ? [
-              { label: 'Dự báo 56 ngày',    value: kpis ? fmt(kpis.total_forecast_56d) : '—', unit: 'units', color: 'text-blue-300' },
+              { label: 'Dự báo 56 ngày',    value: kpis ? fmt(kpis.total_forecast_56d) : '—', unit: 'đv', color: 'text-blue-300' },
               { label: 'SKU đang bán',       value: kpis ? kpis.active_skus.toLocaleString() : '—', unit: 'SKU', color: 'text-emerald-400' },
               { label: 'SKU lợi nhuận cao',  value: kpis ? kpis.high_profit_skus.toLocaleString() : '—', unit: 'top 10%', color: 'text-amber-300' },
             ] : [
-              { label: 'Dự báo 56 ngày',    value: kpis ? fmt(kpis.total_forecast_56d) : '—', unit: 'units', color: 'text-blue-300' },
+              { label: 'Dự báo 56 ngày',    value: kpis ? fmt(kpis.total_forecast_56d) : '—', unit: 'đv', color: 'text-blue-300' },
               { label: 'SKU cần nhập ngay',  value: kpis ? kpis.action_urgent.toString() : '—', unit: 'SKU', color: 'text-red-400' },
               { label: 'SKU đang hoạt động', value: kpis ? kpis.active_skus.toLocaleString() : '—', unit: 'SKU', color: 'text-emerald-400' },
             ]).map(k => (
@@ -178,7 +178,7 @@ export default function TongQuan() {
               <KpiCard label="SKU cần nhập hàng ngay" value={kpis ? kpis.action_urgent.toLocaleString() : '—'}
                 sub="Nguy cơ hết hàng trong lead time" icon={AlertTriangle} variant="danger" />
               <KpiCard label="SKU nguy cơ hết hàng" value={kpis ? kpis.stockout_risk_skus.toLocaleString() : '—'}
-                sub="Tồn kho < safety stock" icon={AlertTriangle} variant="warning" />
+                sub="Tồn kho dưới mức an toàn" icon={AlertTriangle} variant="warning" />
               <KpiCard label="SKU tồn kho dư" value={kpis ? kpis.overstock_skus.toLocaleString() : '—'}
                 sub="Tồn kho > 1.5× nhu cầu 56 ngày" icon={Package} variant="info" />
               <KpiCard label="SKU cần xem xét" value={kpis ? kpis.action_review.toLocaleString() : '—'}

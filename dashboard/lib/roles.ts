@@ -57,7 +57,7 @@ export const ROLES: Record<RoleId, RoleMeta> = {
     bg: 'bg-emerald-50 border-emerald-200',
     nav: [
       { href: '/',           label: 'Tổng quan',          icon: LayoutDashboard },
-      { href: '/canh-bao',   label: 'Risk toàn hệ thống', icon: AlertTriangle   },
+      { href: '/canh-bao',   label: 'Rủi ro toàn hệ thống', icon: AlertTriangle   },
       { href: '/danh-sach',  label: 'Danh sách SKU',      icon: List            },
       { href: '/chi-tiet',   label: 'Dự báo chi tiết',    icon: Search          },
       { href: '/mo-phong',   label: 'Tối ưu tồn kho',     icon: PackageCheck    },
