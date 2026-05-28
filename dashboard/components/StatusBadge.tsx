@@ -7,100 +7,104 @@ interface Props {
   type?: BadgeVariant
 }
 
-function getActionStyle(raw: string) {
-  switch (raw) {
-    case 'Prioritize replenishment':
-      return 'bg-red-100 text-red-800 border-red-200'
-    case 'Review with Sales':
-    case 'Manual review required':
-      return 'bg-amber-100 text-amber-800 border-amber-200'
-    case 'Do not replenish':
-      return 'bg-slate-100 text-slate-600 border-slate-200'
-    case 'Check return/quality issue':
-      return 'bg-purple-100 text-purple-800 border-purple-200'
-    case 'Review slow-moving stock':
-      return 'bg-blue-100 text-blue-800 border-blue-200'
-    default:
-      return 'bg-green-100 text-green-800 border-green-200'
-  }
+const ACTION_DOT: Record<string, string> = {
+  'Prioritize replenishment':   'bg-red-500',
+  'Review with Sales':          'bg-amber-400',
+  'Manual review required':     'bg-amber-400',
+  'Check return/quality issue': 'bg-purple-500',
+  'Review slow-moving stock':   'bg-sky-500',
+  'Do not replenish':           'bg-slate-400',
+}
+const ACTION_TEXT: Record<string, string> = {
+  'Prioritize replenishment':   'text-red-700 font-semibold',
+  'Review with Sales':          'text-amber-700',
+  'Manual review required':     'text-amber-700',
+  'Check return/quality issue': 'text-purple-700',
+  'Review slow-moving stock':   'text-sky-700',
+  'Do not replenish':           'text-slate-500',
 }
 
-function getStatusStyle(status: string) {
-  if (status === 'stockout' || status === '⚠️ Nguy cơ hết hàng')
-    return 'bg-red-100 text-red-800 border-red-200'
-  if (status === 'overstock' || status === '📦 Tồn kho dư')
-    return 'bg-blue-100 text-blue-700 border-blue-200'
-  return 'bg-green-100 text-green-800 border-green-200'
+const DEMAND_TEXT: Record<string, string> = {
+  Frequent:     'text-emerald-700',
+  Active:       'text-sky-700',
+  Intermittent: 'text-amber-700',
+  Dormant:      'text-slate-400',
 }
 
-function getDemandStyle(d: string) {
-  if (d === 'Dormant')      return 'bg-slate-100 text-slate-600 border-slate-200'
-  if (d === 'Intermittent') return 'bg-amber-100 text-amber-700 border-amber-200'
-  if (d === 'Frequent')     return 'bg-green-100 text-green-700 border-green-200'
-  return 'bg-sky-100 text-sky-700 border-sky-200'
+const PROFIT_TEXT: Record<string, string> = {
+  'High Profit':   'text-emerald-700',
+  'Medium Profit': 'text-slate-600',
+  'Low Profit':    'text-slate-400',
 }
 
-function getProfitStyle(p: string) {
-  if (p === 'High Profit')   return 'bg-emerald-100 text-emerald-800 border-emerald-200'
-  if (p === 'Medium Profit') return 'bg-yellow-100 text-yellow-800 border-yellow-200'
-  return 'bg-slate-100 text-slate-600 border-slate-200'
-}
-
-function getReliabilityStyle(r: string) {
-  if (r === 'High Reliability')     return 'bg-green-100 text-green-800 border-green-200'
-  if (r === 'Medium Reliability')   return 'bg-yellow-100 text-yellow-800 border-yellow-200'
-  if (r === 'Low Reliability')      return 'bg-red-100 text-red-700 border-red-200'
-  if (r === 'Insufficient History') return 'bg-slate-100 text-slate-500 border-slate-300'
-  return 'bg-slate-100 text-slate-600 border-slate-200'
+const RELIABILITY_TEXT: Record<string, string> = {
+  'High Reliability':     'text-emerald-700',
+  'Medium Reliability':   'text-slate-600',
+  'Low Reliability':      'text-red-600',
+  'Insufficient History': 'text-slate-400',
 }
 
 export default function StatusBadge({ value, type = 'raw' }: Props) {
-  let label = value
-  let style = 'bg-slate-100 text-slate-600 border-slate-200'
-
   if (type === 'action') {
-    label = ACTION_LABEL[value] ?? value
-    style = getActionStyle(value)
-  } else if (type === 'demand') {
-    label = DEMAND_LABEL[value] ?? value
-    style = getDemandStyle(value)
-  } else if (type === 'profit') {
-    label = PROFIT_LABEL[value] ?? value
-    style = getProfitStyle(value)
-  } else if (type === 'status') {
-    label = value === 'stockout' ? 'Nguy cơ hết hàng'
-          : value === 'overstock' ? 'Tồn kho dư'
-          : 'Bình thường'
-    style = getStatusStyle(value)
-  } else if (type === 'reliability') {
-    label = RELIABILITY_LABEL[value] ?? value
-    style = getReliabilityStyle(value)
+    const label = ACTION_LABEL[value] ?? value
+    const dot   = ACTION_DOT[value]  ?? 'bg-green-500'
+    const text  = ACTION_TEXT[value] ?? 'text-green-700'
+    return (
+      <span className={`inline-flex items-center gap-1.5 text-xs ${text}`}>
+        <span className={`w-1.5 h-1.5 rounded-full ${dot} shrink-0`} />
+        {label}
+      </span>
+    )
   }
 
-  return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${style}`}>
-      {label}
-    </span>
-  )
+  if (type === 'status') {
+    const map: Record<string, { dot: string; text: string; label: string }> = {
+      stockout:  { dot: 'bg-red-500',   text: 'text-red-700',   label: 'Hết hàng' },
+      overstock: { dot: 'bg-blue-500',  text: 'text-blue-700',  label: 'Tồn kho dư' },
+      normal:    { dot: 'bg-green-500', text: 'text-green-700', label: 'Bình thường' },
+    }
+    const s = map[value] ?? map.normal
+    return (
+      <span className={`inline-flex items-center gap-1.5 text-xs ${s.text}`}>
+        <span className={`w-1.5 h-1.5 rounded-full ${s.dot} shrink-0`} />
+        {s.label}
+      </span>
+    )
+  }
+
+  if (type === 'demand') {
+    return (
+      <span className={`text-xs ${DEMAND_TEXT[value] ?? 'text-slate-600'}`}>
+        {DEMAND_LABEL[value] ?? value}
+      </span>
+    )
+  }
+
+  if (type === 'profit') {
+    return (
+      <span className={`text-xs ${PROFIT_TEXT[value] ?? 'text-slate-600'}`}>
+        {PROFIT_LABEL[value] ?? value}
+      </span>
+    )
+  }
+
+  if (type === 'reliability') {
+    return (
+      <span className={`text-xs ${RELIABILITY_TEXT[value] ?? 'text-slate-600'}`}>
+        {RELIABILITY_LABEL[value] ?? value}
+      </span>
+    )
+  }
+
+  return <span className="text-xs text-slate-600">{value}</span>
 }
 
-/** Hiển thị danh sách intelligence badges từ mảng badge keys */
+/** Intelligence signals — plain text, no pills */
 export function IntelBadges({ badges }: { badges: string[] }) {
-  if (!badges || badges.length === 0) return null
+  if (!badges?.length) return null
+  const labels = badges.map(k => BADGE_CONFIG[k]?.label).filter(Boolean)
+  if (!labels.length) return null
   return (
-    <div className="flex flex-wrap gap-1">
-      {badges.map(key => {
-        const cfg = BADGE_CONFIG[key]
-        if (!cfg) return null
-        return (
-          <span
-            key={key}
-            className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold border ${cfg.cls}`}
-          >
-            {cfg.label}
-          </span>
-        )
-      })}
-    </div>
+    <span className="text-[11px] text-slate-400 italic">{labels.join(' · ')}</span>
   )
 }

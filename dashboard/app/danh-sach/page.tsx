@@ -164,71 +164,51 @@ export default function DanhSach() {
       <div className="bg-white rounded-xl border border-slate-100 shadow-sm shadow-slate-200/50 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-slate-50/80 border-b border-slate-100">
+            <thead className="bg-slate-50 border-b border-slate-100">
               <tr>
-                <th className="px-3 py-2.5 text-left text-[11px] text-slate-500">Mã SKU</th>
-                <th className="px-3 py-2.5 text-left text-[11px] text-slate-500">Phân khúc</th>
-                <th className="px-3 py-2.5 text-left text-[11px] text-slate-500">Xu hướng bán</th>
-                <th className="px-3 py-2.5 text-[11px] text-slate-500">
-                  <SortBtn col="sale_days_180" label="Ngày bán (180 ngày)" />
-                </th>
-                <th className="px-3 py-2.5 text-[11px] text-slate-500">
-                  <SortBtn col="days_since_last_sale" label="Bán cuối cách" />
-                </th>
-                <th className="px-3 py-2.5 text-[11px] text-slate-500">
+                <th className="px-4 py-3 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Mã SKU</th>
+                <th className="px-4 py-3 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Xu hướng · Phân khúc</th>
+                <th className="px-4 py-3 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
                   <SortBtn col="forecast_28d_validation" label="DB 28 ngày" />
                 </th>
-                <th className="px-3 py-2.5 text-[11px] text-slate-500">
+                <th className="px-4 py-3 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
                   <SortBtn col="forecast_56d_total" label="DB 56 ngày" />
                 </th>
-                <th className="px-3 py-2.5 text-left text-[11px] text-slate-500">Trạng thái</th>
-                <th className="px-3 py-2.5 text-left text-[11px] text-slate-500">Đặc điểm nhu cầu</th>
-                <th className="px-3 py-2.5 text-left text-[11px] text-slate-500">Hành động</th>
-                <th className="px-3 py-2.5 text-[11px] text-slate-500">Chi tiết</th>
+                <th className="px-4 py-3 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Tồn kho</th>
+                <th className="px-4 py-3 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Hành động</th>
+                <th className="px-4 py-3 text-[11px] font-semibold text-slate-400 uppercase tracking-wider"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {loading ? (
-                <tr><td colSpan={10} className="px-3 py-8 text-center text-sm text-slate-400">Đang tải…</td></tr>
+                <tr><td colSpan={7} className="px-4 py-8 text-center text-sm text-slate-400">Đang tải…</td></tr>
               ) : rows.map(r => (
-                <tr key={r.ItemCode} className="hover:bg-slate-50 text-sm transition-colors">
-                  <td className="px-3 py-2.5 font-mono font-medium text-slate-800 whitespace-nowrap">
+                <tr key={r.ItemCode} className="hover:bg-slate-50 transition-colors">
+                  <td className="px-4 py-3 font-mono text-sm font-medium text-slate-800 whitespace-nowrap">
                     {r.ItemCode}
                   </td>
-                  <td className="px-3 py-2.5 whitespace-nowrap">
-                    <StatusBadge value={r.profit_segment} type="profit" />
-                  </td>
-                  <td className="px-3 py-2.5 whitespace-nowrap">
-                    <StatusBadge value={r.demand_class} type="demand" />
-                  </td>
-                  <td className="px-3 py-2.5 text-center text-slate-600">
-                    {r.sale_days_180}
-                  </td>
-                  <td className="px-3 py-2.5 text-center text-slate-600">
-                    {r.days_since_last_sale > 999 ? '—' : `${r.days_since_last_sale} ngày`}
-                  </td>
-                  <td className="px-3 py-2.5 text-right font-medium text-slate-700">
-                    {r.forecast_28d_validation?.toLocaleString(undefined,{maximumFractionDigits:1})}
-                  </td>
-                  <td className="px-3 py-2.5 text-right font-medium text-slate-700">
-                    {r.forecast_56d_total?.toLocaleString(undefined,{maximumFractionDigits:1})}
-                  </td>
-                  <td className="px-3 py-2.5 whitespace-nowrap">
-                    <StatusBadge value={r._status} type="status" />
-                  </td>
-                  <td className="px-3 py-2.5 whitespace-nowrap">
-                    <div className="flex flex-col gap-1">
-                      <StatusBadge value={r.reliability_tag} type="reliability" />
-                      {r._badges?.length > 0 && <IntelBadges badges={r._badges} />}
+                  <td className="px-4 py-3">
+                    <div className="flex flex-col gap-0.5">
+                      <StatusBadge value={r.demand_class} type="demand" />
+                      <StatusBadge value={r.profit_segment} type="profit" />
                     </div>
                   </td>
-                  <td className="px-3 py-2.5 whitespace-nowrap">
+                  <td className="px-4 py-3 text-right text-sm text-slate-700">
+                    {r.forecast_28d_validation?.toLocaleString(undefined,{maximumFractionDigits:1})}
+                  </td>
+                  <td className="px-4 py-3 text-right text-sm text-slate-700">
+                    {r.forecast_56d_total?.toLocaleString(undefined,{maximumFractionDigits:1})}
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    <StatusBadge value={r._status} type="status" />
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap">
                     <StatusBadge value={r.recommended_action} type="action" />
                   </td>
-                  <td className="px-3 py-2.5 text-center">
+                  <td className="px-4 py-3 text-center">
                     <Link
                       href={`/chi-tiet?sku=${r.ItemCode}`}
-                      className="text-blue-600 hover:underline text-xs font-medium"
+                      className="text-blue-500 hover:text-blue-700 text-xs font-medium"
                     >
                       Xem →
                     </Link>
@@ -242,7 +222,7 @@ export default function DanhSach() {
         {/* Pagination */}
         <div className="flex items-center justify-between px-4 py-3 border-t border-slate-100 bg-slate-50">
           <span className="text-xs text-slate-500">
-            {total.toLocaleString()} SKU — trang {page}/{totalPages}
+            {total.toLocaleString()} SKU · trang {page}/{totalPages}
           </span>
           <div className="flex gap-1">
             <button onClick={() => setPage(1)} disabled={page === 1}

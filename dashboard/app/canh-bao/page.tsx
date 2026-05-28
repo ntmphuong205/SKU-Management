@@ -114,14 +114,6 @@ export default function CanhBao() {
     URL.revokeObjectURL(url)
   }
 
-  function rowBg(r: Row) {
-    if (r.recommended_action === 'Prioritize replenishment') return 'bg-red-50 hover:bg-red-100'
-    if (['Review with Sales','Manual review required'].includes(r.recommended_action)) return 'bg-amber-50 hover:bg-amber-100'
-    if (r.recommended_action === 'Check return/quality issue') return 'bg-purple-50 hover:bg-purple-100'
-    if (r.recommended_action === 'Review slow-moving stock') return 'bg-sky-50 hover:bg-sky-100'
-    return 'hover:bg-slate-50'
-  }
-
   function reasonVN(raw: string): string {
     return raw
       .replace('Only ', 'Chỉ ').replace(' sale days in last 180 days', ' ngày bán trong 180 ngày qua')
@@ -230,25 +222,15 @@ export default function CanhBao() {
       {/* Table */}
       <div className="bg-white rounded-xl border border-slate-100 shadow-sm shadow-slate-200/50 overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full table-fixed">
-            <colgroup>
-              <col className="w-28" />   {/* Mã SKU */}
-              <col className="w-32" />   {/* Phân khúc */}
-              <col className="w-28" />   {/* DB 28 ngày */}
-              <col className="w-28" />   {/* DB 56 ngày */}
-              <col className="w-28" />   {/* Đề xuất đặt */}
-              <col className="w-36" />   {/* Độ tin cậy */}
-              <col className="w-36" />   {/* Hành động */}
-              <col />                    {/* Tín hiệu / Lý do */}
-            </colgroup>
-            <thead className="bg-slate-50/80 border-b border-slate-100">
+          <table className="w-full">
+            <thead className="bg-slate-50 border-b border-slate-100">
               <tr>
                 {[
-                  'Mã SKU', 'Phân khúc',
-                  'Dự báo 28 ngày', 'Dự báo 56 ngày', 'Đề xuất đặt (28 ngày)',
-                  'Đặc điểm nhu cầu', 'Hành động', 'Tín hiệu & Lý do',
+                  'Mã SKU', 'Hành động',
+                  'Dự báo 28 ngày', 'Dự báo 56 ngày', 'Đề xuất đặt',
+                  'Lý do',
                 ].map(h => (
-                  <th key={h} className="px-3 py-2.5 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wide">
+                  <th key={h} className="px-4 py-3 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
                     {h}
                   </th>
                 ))}
@@ -256,29 +238,26 @@ export default function CanhBao() {
             </thead>
             <tbody className="divide-y divide-slate-100">
               {loading ? (
-                <tr><td colSpan={8} className="px-3 py-8 text-center text-sm text-slate-400">Đang tải…</td></tr>
+                <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-slate-400">Đang tải…</td></tr>
               ) : rows.length === 0 ? (
-                <tr><td colSpan={8} className="px-3 py-8 text-center text-sm text-slate-400">Không có dữ liệu</td></tr>
+                <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-slate-400">Không có dữ liệu</td></tr>
               ) : rows.map(r => (
-                <tr key={r.ItemCode} className={`text-sm transition-colors ${rowBg(r)}`}>
-                  <td className="px-3 py-2.5 font-mono font-medium">
-                    <Link href={`/chi-tiet?sku=${r.ItemCode}`} className="text-blue-700 hover:underline">
+                <tr key={r.ItemCode} className="hover:bg-slate-50 transition-colors">
+                  <td className="px-4 py-3 font-mono text-sm font-medium text-slate-800">
+                    <Link href={`/chi-tiet?sku=${r.ItemCode}`} className="text-blue-600 hover:underline">
                       {r.ItemCode}
                     </Link>
                   </td>
-                  <td className="px-3 py-2.5">
-                    <div className="flex flex-col gap-1">
-                      <StatusBadge value={r.profit_segment} type="profit" />
-                      <StatusBadge value={r.demand_class} type="demand" />
-                    </div>
+                  <td className="px-4 py-3">
+                    <StatusBadge value={r.recommended_action} type="action" />
                   </td>
-                  <td className="px-3 py-2.5 text-right font-medium text-slate-700">
+                  <td className="px-4 py-3 text-right text-sm text-slate-700">
                     {r.forecast_28d_validation?.toLocaleString(undefined,{maximumFractionDigits:1})}
                   </td>
-                  <td className="px-3 py-2.5 text-right font-medium text-slate-700">
+                  <td className="px-4 py-3 text-right text-sm text-slate-700">
                     {r.forecast_56d_total?.toLocaleString(undefined,{maximumFractionDigits:1})}
                   </td>
-                  <td className="px-3 py-2.5 text-right font-semibold">
+                  <td className="px-4 py-3 text-right text-sm font-semibold">
                     {r.forecast_28d_validation > 0 &&
                      ['Prioritize replenishment', 'Review with Sales', 'Manual review required'].includes(r.recommended_action)
                       ? <span className={r.recommended_action === 'Prioritize replenishment' ? 'text-red-700' : 'text-amber-600'}>
@@ -286,25 +265,8 @@ export default function CanhBao() {
                         </span>
                       : <span className="text-slate-400">—</span>}
                   </td>
-                  <td className="px-3 py-2.5">
-                    <StatusBadge value={r.reliability_tag} type="reliability" />
-                  </td>
-                  <td className="px-3 py-2.5">
-                    <StatusBadge value={r.recommended_action} type="action" />
-                  </td>
-                  <td className="px-3 py-2.5">
-                    {/* Intelligence badges */}
-                    {r._badges?.length > 0 && (
-                      <div className="mb-1.5">
-                        <IntelBadges badges={r._badges} />
-                      </div>
-                    )}
-                    {/* Reason text */}
-                    <div className="flex flex-col gap-0.5 text-xs text-slate-500">
-                      {r.reason_codes?.split(' | ').map((rc, i) => (
-                        <span key={i}>• {reasonVN(rc)}</span>
-                      ))}
-                    </div>
+                  <td className="px-4 py-3 text-xs text-slate-500 max-w-xs">
+                    {r.reason_codes?.split(' | ').slice(0,2).map(reasonVN).join(' · ')}
                   </td>
                 </tr>
               ))}
@@ -315,7 +277,7 @@ export default function CanhBao() {
         {/* Pagination */}
         <div className="flex items-center justify-between px-4 py-3 border-t border-slate-100 bg-slate-50">
           <span className="text-xs text-slate-500">
-            Hiển thị {rows.length} / {total} SKU cần hành động
+            {total.toLocaleString()} SKU · trang {page}
           </span>
           <div className="flex gap-1">
             <button onClick={() => setPage(p => Math.max(1, p-1))} disabled={page === 1}
