@@ -7,7 +7,7 @@ import ClientShell from '@/components/ClientShell'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'AutoParts FIP — Demand Forecast Platform',
+  title: 'AutoParts FIP — Nền tảng Dự báo Nhu cầu',
   description: 'Nền tảng dự báo nhu cầu và cảnh báo rủi ro tồn kho phụ tùng ô tô',
 }
 

@@ -29,11 +29,11 @@ Bạn có thể hỏi tôi bằng ngôn ngữ tự nhiên, ví dụ:
 Bạn muốn biết gì?`
 
 const QUICK_PROMPTS = [
-  { label: '🔴 Rủi ro cao nhất',    text: 'Top 10 SKU có rủi ro cao nhất cần xử lý ngay hôm nay?' },
-  { label: '⚡ Cần nhập gấp',        text: 'SKU nào đang cần nhập hàng gấp trong tuần này?' },
-  { label: '📉 Reliability thấp',   text: 'Những SKU nào có forecast reliability thấp nhất? Tại sao không đáng tin?' },
-  { label: '📈 Demand spike',        text: 'SKU nào đang có demand spike — nhu cầu tăng đột biến so với lịch sử?' },
-  { label: '📦 Tồn kho dư',          text: 'Tồn kho nào đang dư thừa cần giải phóng? Ưu tiên SKU lợi nhuận cao.' },
+  { label: '🔴 Rủi ro cao nhất',       text: 'Top 10 SKU có rủi ro cao nhất cần xử lý ngay hôm nay?' },
+  { label: '⚡ Cần nhập gấp',           text: 'SKU nào đang cần nhập hàng gấp trong tuần này?' },
+  { label: '📉 Dự báo kém tin cậy',    text: 'Những SKU nào có độ tin cậy dự báo thấp nhất? Tại sao không đáng tin?' },
+  { label: '📈 Nhu cầu tăng đột biến', text: 'SKU nào đang có nhu cầu tăng đột biến so với lịch sử?' },
+  { label: '📦 Tồn kho dư thừa',       text: 'Tồn kho nào đang dư thừa cần giải phóng? Ưu tiên SKU lợi nhuận cao.' },
 ]
 
 // ── Mini chart rendered inside assistant messages ─────────────
@@ -198,7 +198,7 @@ export default function TroLy() {
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2 text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-full px-3 py-1.5">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block animate-pulse" />
-            Gemini AI · 15,972 SKU
+            Gemini AI · 15.972 SKU
           </div>
           <button
             onClick={reset}

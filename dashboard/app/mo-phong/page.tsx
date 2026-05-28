@@ -161,7 +161,7 @@ function MoPhongContent() {
                       <span className="text-sm font-mono font-medium text-slate-800">{s.ItemCode}</span>
                       <span className="ml-2 text-xs text-slate-400">
                         {s.forecast_56d_total > 0
-                          ? `DB 56 ngày: ${s.forecast_56d_total.toFixed(0)} units`
+                          ? `DB 56 ngày: ${s.forecast_56d_total.toFixed(0)} đv`
                           : 'Không có dự báo'}
                       </span>
                     </button>
@@ -212,11 +212,11 @@ function MoPhongContent() {
             <div className="bg-slate-50 rounded-md px-3 py-2.5 space-y-1.5 text-xs">
               <div className="flex justify-between text-slate-500">
                 <span>Nhu cầu gốc (mô hình)</span>
-                <span className="font-mono font-medium">{afpd.toFixed(2)} units/ngày</span>
+                <span className="font-mono font-medium">{afpd.toFixed(2)} đv/ngày</span>
               </div>
               <div className={`flex justify-between font-medium ${isAdjusted ? (adjPct > 0 ? 'text-red-700' : 'text-blue-700') : 'text-slate-500'}`}>
                 <span>Nhu cầu sau điều chỉnh</span>
-                <span className="font-mono">{afpdAdj.toFixed(2)} units/ngày</span>
+                <span className="font-mono">{afpdAdj.toFixed(2)} đv/ngày</span>
               </div>
               <div className="flex justify-between text-slate-500">
                 <span>Dự báo 56 ngày (điều chỉnh)</span>
@@ -245,7 +245,7 @@ function MoPhongContent() {
             <h3 className="text-sm font-semibold text-slate-700">Tham số tồn kho</h3>
 
             <div>
-              <label className="block text-xs text-slate-500 mb-1">Tồn kho thực tế hiện tại (units)</label>
+              <label className="block text-xs text-slate-500 mb-1">Tồn kho thực tế hiện tại (đv)</label>
               <input
                 type="number" min={0} value={currentStock}
                 onChange={e => setCurrentStock(Number(e.target.value))}
@@ -303,7 +303,7 @@ function MoPhongContent() {
               <span>
                 Đang áp dụng hệ số điều chỉnh <b>×{demandAdj.toFixed(2)}</b>
                 {' '}({adjPct > 0 ? '+' : ''}{adjPct}%) —{' '}
-                nhu cầu từ <b>{afpd.toFixed(2)}</b> → <b>{afpdAdj.toFixed(2)}</b> units/ngày.
+                nhu cầu từ <b>{afpd.toFixed(2)}</b> → <b>{afpdAdj.toFixed(2)}</b> đv/ngày.
                 Toàn bộ kết quả bên dưới đã được tính lại theo giá trị này.
               </span>
             </div>
@@ -326,10 +326,10 @@ function MoPhongContent() {
               </div>
               {afpd > 0 && (
                 <div className="text-right text-sm text-slate-500 space-y-0.5">
-                  <p>Gốc: {afpd.toFixed(2)} units/ngày</p>
+                  <p>Gốc: {afpd.toFixed(2)} đv/ngày</p>
                   {isAdjusted && (
                     <p className={`font-semibold ${adjPct > 0 ? 'text-red-600' : 'text-blue-600'}`}>
-                      Điều chỉnh: {afpdAdj.toFixed(2)} units/ngày
+                      Điều chỉnh: {afpdAdj.toFixed(2)} đv/ngày
                     </p>
                   )}
                   <p>Dự báo 56 ngày: {Math.round(selectedSkuData?.forecast_56d_total ?? afpdAdj * 56).toLocaleString()} units</p>
@@ -342,7 +342,7 @@ function MoPhongContent() {
           <div className="grid grid-cols-4 gap-3">
             <KpiCard label="Tồn kho hiện tại"                   value={currentStock.toLocaleString()} />
             <KpiCard label={`Nhu cầu ${leadTime} ngày (điều chỉnh)`} value={ltDemand.toFixed(0)} variant={stockout ? 'warning' : 'default'} />
-            <KpiCard label="Safety stock tối thiểu"              value={ssDemand.toFixed(0)} />
+            <KpiCard label="Tồn kho an toàn tối thiểu"              value={ssDemand.toFixed(0)} />
             <KpiCard label="Tồn kho sau thời gian chờ"           value={projStock.toFixed(0)} variant={stockout ? 'danger' : 'success'} />
           </div>
 
@@ -360,7 +360,7 @@ function MoPhongContent() {
             </h3>
             <p className="text-[11px] text-slate-400 mb-4">
               Dựa trên nhu cầu {isAdjusted ? 'điều chỉnh' : 'dự báo gốc'}:{' '}
-              <b>{afpdAdj.toFixed(2)} units/ngày</b>
+              <b>{afpdAdj.toFixed(2)} đv/ngày</b>
               {isAdjusted && <span className="text-slate-300"> (gốc: {afpd.toFixed(2)})</span>}
             </p>
             <ResponsiveContainer width="100%" height={220}>
@@ -374,9 +374,9 @@ function MoPhongContent() {
                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                 <XAxis dataKey="day" tick={{ fontSize: 10 }} interval={6} />
                 <YAxis tick={{ fontSize: 11 }} />
-                <Tooltip formatter={(v) => [`${Number(v).toFixed(1)} units`, 'Tồn kho dự kiến']} />
+                <Tooltip formatter={(v) => [`${Number(v).toFixed(1)} đv`, 'Tồn kho dự kiến']} />
                 <ReferenceLine y={ssLine} stroke="#ef4444" strokeDasharray="4 4"
-                  label={{ value: `Safety stock (${ssLine.toFixed(0)})`, position: 'insideTopRight', fontSize: 11, fill: '#ef4444' }} />
+                  label={{ value: `Tồn kho an toàn (${ssLine.toFixed(0)})`, position: 'insideTopRight', fontSize: 11, fill: '#ef4444' }} />
                 <Area type="monotone" dataKey="Tồn kho dự kiến"
                   stroke="#2563eb" strokeWidth={2} fill="url(#stockGrad)" />
               </AreaChart>

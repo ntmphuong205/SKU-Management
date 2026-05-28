@@ -25,7 +25,7 @@ export default function LoginPage() {
         </div>
         <div>
           <p className="font-bold text-slate-900 text-lg leading-tight">AutoParts FIP</p>
-          <p className="text-xs text-slate-400">Forecast Intelligence Platform</p>
+          <p className="text-xs text-slate-400">Nền tảng Dự báo Thông minh</p>
         </div>
       </div>
 

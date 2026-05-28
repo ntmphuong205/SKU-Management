@@ -126,7 +126,7 @@ function ChiTietContent() {
 
     const prompt =
       `Phân tích ngắn cho ${sku.ItemCode} (${sku.demand_class}, ${sku.profit_segment}): ` +
-      `dự báo 56 ngày là ${sku.forecast_56d_total.toFixed(0)} units${trendNote}. ` +
+      `dự báo 56 ngày là ${sku.forecast_56d_total.toFixed(0)} đv${trendNote}. ` +
       `Hành động: ${sku.recommended_action}. ` +
       `Viết 2–3 câu bằng tiếng Việt — chỉ giải thích ý nghĩa kinh doanh và khuyến nghị quan trọng nhất, không liệt kê số liệu thô.`
 
@@ -239,9 +239,9 @@ function ChiTietContent() {
           <div>
             <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-3">Dự báo nhu cầu</h2>
             <div className="grid grid-cols-3 gap-3">
-              <KpiCard label="Dự báo 28 ngày tới (F1–F28)"  value={fmt(sku.forecast_28d_validation, ' units')} variant="info" />
-              <KpiCard label="Dự báo 28 ngày tiếp (F29–F56)" value={fmt(sku.forecast_28d_evaluation, ' units')} />
-              <KpiCard label="Tổng dự báo 56 ngày"           value={fmt(sku.forecast_56d_total, ' units')} variant="info" />
+              <KpiCard label="Dự báo 28 ngày tới (F1–F28)"  value={fmt(sku.forecast_28d_validation, ' đv')} variant="info" />
+              <KpiCard label="Dự báo 28 ngày tiếp (F29–F56)" value={fmt(sku.forecast_28d_evaluation, ' đv')} />
+              <KpiCard label="Tổng dự báo 56 ngày"           value={fmt(sku.forecast_56d_total, ' đv')} variant="info" />
             </div>
           </div>
 
@@ -249,9 +249,9 @@ function ChiTietContent() {
           <div>
             <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-3">Tồn kho mô phỏng</h2>
             <div className="grid grid-cols-3 gap-3">
-              <KpiCard label="Tồn kho ước tính (hiện tại)"      value={fmt(sku._stock, ' units')} />
-              <KpiCard label="Nhu cầu trong thời gian chờ hàng" value={fmt(sku._ltDemand, ' units')} variant={sku._status === 'stockout' ? 'warning' : 'default'} />
-              <KpiCard label="Số lượng cần đặt thêm"            value={sku._reorder > 0 ? fmt(sku._reorder, ' units') : 'Chưa cần đặt'} variant={sku._reorder > 0 ? 'danger' : 'success'} />
+              <KpiCard label="Tồn kho ước tính (hiện tại)"      value={fmt(sku._stock, ' đv')} />
+              <KpiCard label="Nhu cầu trong thời gian chờ hàng" value={fmt(sku._ltDemand, ' đv')} variant={sku._status === 'stockout' ? 'warning' : 'default'} />
+              <KpiCard label="Số lượng cần đặt thêm"            value={sku._reorder > 0 ? fmt(sku._reorder, ' đv') : 'Chưa cần đặt'} variant={sku._reorder > 0 ? 'danger' : 'success'} />
             </div>
           </div>
 
@@ -262,7 +262,7 @@ function ChiTietContent() {
               <KpiCard label="Số ngày bán (180 ngày gần nhất)" value={`${sku.sale_days_180} ngày`} />
               <KpiCard label="Giao dịch cuối cách đây"          value={sku.days_since_last_sale > 9000 ? 'Chưa có dữ liệu' : `${sku.days_since_last_sale} ngày`} />
               <KpiCard label="Tỷ lệ hoàn hàng"                  value={`${(sku.return_ratio * 100).toFixed(1)}%`} variant={sku.return_ratio > 0.05 ? 'warning' : 'default'} />
-              <KpiCard label="Tổng đã bán (sau hoàn trả)"       value={`${sku.net_qty.toLocaleString(undefined,{maximumFractionDigits:0})} units`} />
+              <KpiCard label="Tổng đã bán (sau hoàn trả)"       value={`${sku.net_qty.toLocaleString(undefined,{maximumFractionDigits:0})} đv`} />
             </div>
           </div>
 
@@ -271,15 +271,15 @@ function ChiTietContent() {
             <div className="col-span-2 bg-white rounded-xl border border-slate-100 shadow-sm shadow-slate-200/50 p-5">
               <h3 className="text-sm font-semibold text-slate-700 mb-1">Dự báo theo tuần — 56 ngày tới</h3>
               <p className="text-xs text-slate-400 mb-4">
-                Tháng đầu (F1–F28): {sku?.forecast_28d_validation.toLocaleString(undefined,{maximumFractionDigits:0})} units &nbsp;·&nbsp;
-                Tháng tiếp (F29–F56): {sku?.forecast_28d_evaluation.toLocaleString(undefined,{maximumFractionDigits:0})} units
+                Tháng đầu (F1–F28): {sku?.forecast_28d_validation.toLocaleString(undefined,{maximumFractionDigits:0})} đv &nbsp;·&nbsp;
+                Tháng tiếp (F29–F56): {sku?.forecast_28d_evaluation.toLocaleString(undefined,{maximumFractionDigits:0})} đv
               </p>
               <ResponsiveContainer width="100%" height={200}>
                 <BarChart data={weeklyForecast} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                   <XAxis dataKey="tuần" tick={{ fontSize: 11 }} />
                   <YAxis tick={{ fontSize: 11 }} />
-                  <Tooltip formatter={(v) => [`${Number(v).toFixed(0)} units`, '']} />
+                  <Tooltip formatter={(v) => [`${Number(v).toFixed(0)} đv`, '']} />
                   <Legend wrapperStyle={{ fontSize: 11 }} />
                   <Bar dataKey="Tháng đầu (F1–F28)" fill="#2563eb" radius={[3, 3, 0, 0]} />
                   <Bar dataKey="Tháng tiếp (F29–F56)" fill="#0891b2" radius={[3, 3, 0, 0]} />
@@ -316,7 +316,7 @@ function ChiTietContent() {
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-slate-500">Đã bán (net, sau hoàn)</span>
-                    <span className="font-medium">{sku.net_qty.toLocaleString(undefined,{maximumFractionDigits:0})} units</span>
+                    <span className="font-medium">{sku.net_qty.toLocaleString(undefined,{maximumFractionDigits:0})} đv</span>
                   </div>
                 </div>
               </div>

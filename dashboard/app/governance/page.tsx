@@ -581,12 +581,6 @@ export default function GovernancePage() {
         <p className="text-sm text-slate-500">Tổng quan hệ thống · Hiệu suất mô hình dự báo · Xuất báo cáo</p>
       </div>
 
-      {/* ── Ingestion pipeline ──────────────────────────────────── */}
-      <IngestionPanel />
-
-      {/* ── Concept Drift Detection ─────────────────────────────── */}
-      <DriftPanel />
-
       {/* ── Proposals section ───────────────────────────────────── */}
       <ProposalSection
         proposals={proposals}
@@ -763,6 +757,12 @@ export default function GovernancePage() {
           </div>
         </div>
       </div>
+
+      {/* ── Ingestion pipeline ──────────────────────────────────── */}
+      <IngestionPanel />
+
+      {/* ── Concept Drift Detection ─────────────────────────────── */}
+      <DriftPanel />
 
       {/* Review modal */}
       {reviewModal && (
