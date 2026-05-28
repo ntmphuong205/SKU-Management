@@ -1,12 +1,12 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
-import { AlertTriangle, Download, Lock, Send } from 'lucide-react'
+import { AlertTriangle, Download, Lock, Send, CheckCircle, XCircle, Clock } from 'lucide-react'
 import Link from 'next/link'
 import StatusBadge, { IntelBadges } from '@/components/StatusBadge'
 import { ACTION_LABEL } from '@/lib/types'
 import { useRole } from '@/context/RoleContext'
-import { getProposals, saveProposal } from '@/lib/proposals'
+import { getProposals, saveProposal, type Proposal } from '@/lib/proposals'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip,
   ResponsiveContainer, Cell, LabelList,
@@ -58,12 +58,16 @@ export default function CanhBao() {
   const [proposalQty, setProposalQty]     = useState(0)
   const [proposalNote, setProposalNote]   = useState('')
   const [proposedSkus, setProposedSkus]   = useState<Set<string>>(new Set())
+  const [myProposals, setMyProposals]     = useState<Proposal[]>([])
+
+  function refreshProposals() {
+    const all = getProposals()
+    setMyProposals(all)
+    setProposedSkus(new Set(all.filter(p => p.status === 'pending').map(p => p.sku)))
+  }
 
   useEffect(() => {
-    if (isSalesReadonly) {
-      const existing = getProposals()
-      setProposedSkus(new Set(existing.filter(p => p.status === 'pending').map(p => p.sku)))
-    }
+    if (isSalesReadonly) refreshProposals()
   }, [isSalesReadonly])
 
   function openProposal(sku: string, forecast: number) {
@@ -75,8 +79,8 @@ export default function CanhBao() {
   function submitProposal() {
     if (!proposalModal || proposalQty <= 0) return
     saveProposal({ sku: proposalModal.sku, qty: proposalQty, note: proposalNote })
-    setProposedSkus(prev => new Set([...prev, proposalModal.sku]))
     setProposalModal(null)
+    refreshProposals()
   }
 
   useEffect(() => {
@@ -188,6 +192,52 @@ export default function CanhBao() {
           </button>
         )}
       </div>
+
+      {/* Proposal status panel — sales only */}
+      {isSalesReadonly && myProposals.length > 0 && (
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 bg-slate-50">
+            <p className="text-xs font-semibold text-slate-600 uppercase tracking-wider">Đề xuất nhập hàng của tôi</p>
+            <span className="text-[11px] text-slate-400">{myProposals.filter(p => p.status === 'pending').length} chờ duyệt · {myProposals.filter(p => p.status !== 'pending').length} đã xử lý</span>
+          </div>
+          <div className="divide-y divide-slate-50">
+            {myProposals.slice().reverse().map(p => (
+              <div key={p.id} className="flex items-center gap-3 px-4 py-3">
+                {p.status === 'pending'  && <Clock       size={15} className="text-amber-400 shrink-0" />}
+                {p.status === 'approved' && <CheckCircle size={15} className="text-emerald-500 shrink-0" />}
+                {p.status === 'rejected' && <XCircle     size={15} className="text-red-400 shrink-0" />}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-sm font-semibold text-slate-800">{p.sku}</span>
+                    <span className="text-xs text-slate-400">· {p.qty.toLocaleString()} đơn vị</span>
+                    {p.note && <span className="text-xs text-slate-400 truncate max-w-[160px]">· {p.note}</span>}
+                  </div>
+                  {p.status === 'approved' && (
+                    <p className="text-xs text-emerald-600 mt-0.5 font-medium">
+                      Đã được phê duyệt{p.reviewNote ? ` · ${p.reviewNote}` : ''}
+                    </p>
+                  )}
+                  {p.status === 'rejected' && (
+                    <p className="text-xs text-red-500 mt-0.5 font-medium">
+                      Bị từ chối{p.reviewNote ? ` · ${p.reviewNote}` : ''}
+                    </p>
+                  )}
+                  {p.status === 'pending' && (
+                    <p className="text-xs text-slate-400 mt-0.5">Đang chờ Quản lý phê duyệt</p>
+                  )}
+                </div>
+                <span className={`shrink-0 text-[11px] font-semibold px-2 py-0.5 rounded-full ${
+                  p.status === 'pending'  ? 'bg-amber-100 text-amber-700' :
+                  p.status === 'approved' ? 'bg-emerald-100 text-emerald-700' :
+                  'bg-red-100 text-red-700'
+                }`}>
+                  {p.status === 'pending' ? 'Chờ duyệt' : p.status === 'approved' ? 'Đã duyệt' : 'Từ chối'}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Summary counts */}
       {isSalesReadonly ? (
