@@ -1,7 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { Download, ShieldCheck, BarChart3, AlertTriangle, Package, CheckCircle, XCircle, Clock } from 'lucide-react'
+import { useEffect, useState, useCallback } from 'react'
+import { Download, ShieldCheck, BarChart3, AlertTriangle, Package, CheckCircle, XCircle, Clock, Database, RefreshCw, Wifi, WifiOff, Play } from 'lucide-react'
 import { getProposals, updateProposal, type Proposal } from '@/lib/proposals'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
@@ -63,6 +63,166 @@ async function exportCsv(params: URLSearchParams, filename: string, headers: str
 
 function fmtDate(s: string) {
   return new Date(s).toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' })
+}
+
+interface IngestionStatus {
+  source: 'live' | 'offline'
+  total_records?: number
+  total_skus?: number
+  pending_files?: number
+  next_scan?: string
+  last_ingestion?: {
+    filename: string; status: string; records_total: number
+    records_inserted: number; records_duplicate: number; finished_at: string
+  } | null
+  history?: Array<{
+    id: number; filename: string; status: string
+    records_total: number; records_inserted: number; records_duplicate: number
+    records_invalid: number; error_message: string | null; started_at: string; finished_at: string
+  }>
+  error?: string
+}
+
+function IngestionPanel() {
+  const [data, setData]           = useState<IngestionStatus | null>(null)
+  const [loading, setLoading]     = useState(true)
+  const [triggering, setTriggering] = useState(false)
+  const [showHistory, setShowHistory] = useState(false)
+
+  const reload = useCallback(async () => {
+    setLoading(true)
+    try {
+      const res = await fetch('/api/ingestion-status')
+      setData(await res.json())
+    } catch {
+      setData({ source: 'offline', error: 'Không kết nối được backend' })
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => { reload() }, [reload])
+
+  async function triggerScan() {
+    setTriggering(true)
+    try {
+      await fetch('/api/ingestion-trigger', { method: 'POST' })
+      await reload()
+    } finally {
+      setTriggering(false)
+    }
+  }
+
+  const isOffline = !data || data.source === 'offline'
+
+  return (
+    <div className="bg-white rounded-xl border-2 border-blue-200 shadow-sm overflow-hidden">
+      <div className="flex items-center justify-between px-5 py-4 border-b border-blue-100 bg-blue-50/60">
+        <div className="flex items-center gap-2">
+          <Database size={15} className="text-blue-600" />
+          <div>
+            <p className="text-sm font-semibold text-slate-800">Auto Data Ingestion</p>
+            <p className="text-xs text-slate-500 mt-0.5">Pipeline tự động nạp CSV — cập nhật mỗi 5 phút</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          {isOffline
+            ? <span className="flex items-center gap-1 text-xs text-slate-400"><WifiOff size={12} /> Backend offline</span>
+            : <span className="flex items-center gap-1 text-xs text-emerald-600"><Wifi size={12} /> Live</span>
+          }
+          <button onClick={reload} disabled={loading}
+            className="p-1.5 rounded-lg hover:bg-blue-100 text-blue-500 disabled:opacity-40 transition-colors">
+            <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
+          </button>
+          <button onClick={triggerScan} disabled={triggering || isOffline}
+            className="flex items-center gap-1.5 text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg disabled:opacity-40 transition-colors">
+            <Play size={11} /> {triggering ? 'Đang quét...' : 'Quét ngay'}
+          </button>
+        </div>
+      </div>
+
+      {isOffline ? (
+        <div className="px-5 py-8 text-center">
+          <WifiOff size={24} className="mx-auto text-slate-300 mb-2" />
+          <p className="text-sm text-slate-400">Backend chưa khởi động</p>
+          <p className="text-xs text-slate-300 mt-1 font-mono">cd backend && python scheduler.py</p>
+        </div>
+      ) : (
+        <div className="p-5 space-y-4">
+          {/* KPI row */}
+          <div className="grid grid-cols-3 gap-4">
+            {[
+              { label: 'Tổng bản ghi', value: data?.total_records?.toLocaleString() ?? '—' },
+              { label: 'Tổng SKU', value: data?.total_skus?.toLocaleString() ?? '—' },
+              { label: 'File chờ xử lý', value: data?.pending_files?.toString() ?? '—' },
+            ].map(c => (
+              <div key={c.label} className="bg-slate-50 rounded-lg p-3 text-center">
+                <p className="text-xs text-slate-400">{c.label}</p>
+                <p className="text-xl font-bold text-slate-800 mt-0.5">{c.value}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Last ingestion */}
+          {data?.last_ingestion && (
+            <div className="flex items-start gap-3 bg-slate-50 rounded-lg p-3 text-xs">
+              <CheckCircle size={14} className="text-emerald-500 mt-0.5 shrink-0" />
+              <div>
+                <p className="font-medium text-slate-700">{data.last_ingestion.filename}</p>
+                <p className="text-slate-400 mt-0.5">
+                  {data.last_ingestion.records_inserted} bản ghi mới · {data.last_ingestion.records_duplicate} trùng · {fmtDate(data.last_ingestion.finished_at)}
+                </p>
+              </div>
+              <span className={`ml-auto shrink-0 text-[11px] font-semibold px-2 py-0.5 rounded-full ${
+                data.last_ingestion.status === 'success' ? 'bg-emerald-100 text-emerald-700' :
+                data.last_ingestion.status === 'partial' ? 'bg-amber-100 text-amber-700' :
+                'bg-red-100 text-red-700'
+              }`}>{data.last_ingestion.status}</span>
+            </div>
+          )}
+
+          {/* History toggle */}
+          {(data?.history?.length ?? 0) > 0 && (
+            <div>
+              <button onClick={() => setShowHistory(v => !v)}
+                className="text-xs text-blue-600 hover:underline">
+                {showHistory ? 'Ẩn lịch sử' : `Xem lịch sử (${data?.history?.length} lần)`}
+              </button>
+              {showHistory && (
+                <table className="w-full mt-2 text-xs">
+                  <thead>
+                    <tr className="border-b border-slate-100">
+                      {['File', 'Trạng thái', 'Tổng', 'Mới', 'Trùng', 'Thời gian'].map((h, i) => (
+                        <th key={i} className="py-1.5 pr-3 text-left font-semibold text-slate-400 uppercase text-[10px] tracking-wide">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-50">
+                    {data?.history?.map(row => (
+                      <tr key={row.id} className="hover:bg-slate-50">
+                        <td className="py-1.5 pr-3 font-mono text-slate-600 max-w-[160px] truncate">{row.filename}</td>
+                        <td className="py-1.5 pr-3">
+                          <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${
+                            row.status === 'success' ? 'bg-emerald-100 text-emerald-700' :
+                            row.status === 'partial'  ? 'bg-amber-100 text-amber-700' :
+                            'bg-red-100 text-red-700'
+                          }`}>{row.status}</span>
+                        </td>
+                        <td className="py-1.5 pr-3 text-slate-500">{row.records_total}</td>
+                        <td className="py-1.5 pr-3 text-emerald-600 font-medium">{row.records_inserted}</td>
+                        <td className="py-1.5 pr-3 text-slate-400">{row.records_duplicate}</td>
+                        <td className="py-1.5 text-slate-400 whitespace-nowrap">{fmtDate(row.finished_at)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
 }
 
 function ProposalSection({
@@ -238,6 +398,9 @@ export default function GovernancePage() {
         </div>
         <p className="text-sm text-slate-500">Tổng quan hệ thống · Hiệu suất mô hình dự báo · Xuất báo cáo</p>
       </div>
+
+      {/* ── Ingestion pipeline ──────────────────────────────────── */}
+      <IngestionPanel />
 
       {/* ── Proposals section ───────────────────────────────────── */}
       <ProposalSection
