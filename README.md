@@ -1,183 +1,170 @@
-# 🚗 AutoParts Forecast Intelligence Platform
+# AutoParts FIP — Nền tảng Dự báo Nhu cầu
 
-**Nền tảng dự báo nhu cầu và cảnh báo rủi ro tồn kho phụ tùng ô tô**
+**Nền tảng hỗ trợ ra quyết định vận hành dành cho doanh nghiệp phân phối phụ tùng ô tô**
 
 HBAAC Final Round — Data Product Demo
 
 ---
 
-## 1. Tổng quan sản phẩm
+## Tổng quan
 
-AutoParts Forecast Intelligence Platform biến kết quả dự báo nhu cầu SKU-level thành **hành động kinh doanh** cho các đội Sales, Logistics và Management của nhà phân phối phụ tùng ô tô.
-
-**Đây không chỉ là dashboard — đây là Decision Intelligence System.**
+AutoParts FIP chuyển hóa kết quả dự báo nhu cầu SKU-level thành **hành động vận hành cụ thể** cho ba bộ phận: Kinh doanh, Logistics và Quản lý. Hệ thống không chỉ trả lời *"sản phẩm sẽ bán bao nhiêu?"* mà còn trả lời *"nên làm gì tiếp theo?"*
 
 ---
 
-## 2. Bài toán kinh doanh
+## Kiến trúc hệ thống
 
-Công ty X phân phối phụ tùng ô tô với hàng chục nghìn SKU. Thách thức:
+```
+Frontend (Next.js)          Backend (FastAPI)
+┌─────────────────┐         ┌──────────────────┐
+│  Dashboard      │         │  Ingestion API   │
+│  Risk Monitor   │ ──────► │  APScheduler     │
+│  AI Chatbot     │         │  SQLite (WAL)    │
+│  Simulator      │         │  Drift Detection │
+└─────────────────┘         └──────────────────┘
+        │
+        ▼
+   Gemini API / VnExpress RSS
+```
 
-- Phân phối long-tail: một số ít SKU đóng góp phần lớn lợi nhuận
-- Nhiều SKU bán thưa thớt, khó dự báo
-- Thiếu công cụ để chuyển forecast thành quyết định tồn kho
-- Nhân viên Sales/Logistics cần thông tin ngay, không phải file Excel
-
----
-
-## 3. Bối cảnh cuộc thi
-
-- **Dữ liệu:** 2020-11-17 → 2025-09-05, ~15,972 SKUs, ~712K giao dịch
-- **Horizon dự báo:** 56 ngày
-  - Public (validation): 2025-09-06 → 2025-10-03 (F1–F28)
-  - Private (evaluation): 2025-10-04 → 2025-10-31 (F1–F28)
-- **Metric:** WRMSSE (Weighted Root Mean Squared Scaled Error)
-- **Format submission:** `<ItemCode>_validation` và `<ItemCode>_evaluation`
-
----
-
-## 4. Câu chuyện kỹ thuật — Horizon-aware Robust Ensemble
-
-### Vấn đề
-Mô hình tốt nhất trên Public (v19, WRMSSE = 0.48881) bị **overfit horizon gần**
-và cho kết quả kém hơn trên Private (0.53214).
-
-### Giải pháp
-Áp dụng chính sách khác nhau theo horizon:
-- **Horizon gần (F1–F28):** dùng model public-calibrated champion (v19)
-- **Horizon xa (F29–F56):** dùng robust challenger ensemble
-
-### Kết quả
-
-| Version | Public WRMSSE | Private WRMSSE | Ghi chú |
-|---------|---------------|----------------|---------|
-| v19     | 0.48881       | 0.53214        | Best Public — overfit |
-| v16     | 0.48926       | 0.52732        | Bản được chọn chính thức |
-| v6      | 0.50391       | 0.52101        | Robust challenger |
-| v2      | 0.49334       | 0.52139        | Conservative baseline |
-| v22 ✓   | **0.48881**   | **0.52073**    | Best: Public v19 + Private 70% v6 + 30% v2 |
-
-**Cải thiện:**
-- vs v16 Private: 0.52732 → 0.52073 = **+1.25%**
-- vs v19 Private: 0.53214 → 0.52073 = **+2.14%**
+| Tầng | Công nghệ |
+|---|---|
+| Frontend | Next.js 15, React 19, TypeScript, Tailwind CSS v4 |
+| Biểu đồ | Recharts |
+| Backend | FastAPI, APScheduler, SQLite |
+| AI | Google Gemini API |
+| Dữ liệu ngoại vi | VnExpress RSS |
+| Triển khai | Vercel (frontend) + Railway (backend) |
 
 ---
 
-## 5. Cài đặt & Chạy
+## Phân quyền người dùng
 
-### Cài dependencies
+| Vai trò | Chức năng |
+|---|---|
+| **Kinh doanh** | Dashboard bán hàng, dự báo doanh số, cảnh báo thiếu hàng (chỉ xem + gửi đề xuất nhập), trợ lý AI |
+| **Logistics** | Giám sát rủi ro toàn hệ thống, danh sách tồn kho, mô phỏng tồn kho, trợ lý AI |
+| **Quản lý** | Toàn bộ hệ thống — quản trị, phê duyệt đề xuất, xuất báo cáo, phát hiện drift |
+
+---
+
+## Chức năng chính
+
+### Dashboard tổng quan
+KPI theo vai trò: tổng dự báo 28/56 ngày, SKU rủi ro, biên lợi nhuận, phân bổ nhu cầu và độ tin cậy mô hình. Tích hợp tín hiệu thị trường thời gian thực từ VnExpress RSS, tự động làm mới mỗi 10 phút.
+
+### Giám sát rủi ro tồn kho
+Phân loại SKU thành 4 nhóm: **Nhập hàng ngay / Cần xem xét / Kiểm tra hoàn hàng / Hàng tồn chậm** — dựa trên dự báo, tồn kho và thời gian chờ nhập.
+
+### Luồng đề xuất nhập hàng
+Kinh doanh gửi đề xuất → Quản lý phê duyệt/từ chối kèm ghi chú → kết quả hiển thị ngay về phía Kinh doanh.
+
+### Phân tích dự báo chi tiết SKU
+Dự báo F1–F28 và F29–F56, biểu đồ theo tuần, số lượng cần đặt thêm và **giải thích AI tự động** bằng tiếng Việt cho từng SKU.
+
+### Mô phỏng tồn kho
+Điều chỉnh hệ số nhu cầu, tồn kho hiện tại, thời gian chờ, dự phòng an toàn và mức dịch vụ (95%/90%/80%). Hệ thống tính khuyến nghị đặt hàng và vẽ biểu đồ dự kiến tồn kho 56 ngày.
+
+### Quản trị hệ thống
+Sức khỏe hệ thống, phân bổ độ tin cậy mô hình, phê duyệt đề xuất nhập hàng, xuất 3 loại báo cáo CSV.
+
+### Trợ lý AI
+Hỏi đáp ngôn ngữ tự nhiên bằng tiếng Việt — trả lời kèm biểu đồ minh họa khi cần.
+
+### Auto Data Ingestion
+Backend tự động quét thư mục `incoming/` mỗi 5 phút, kiểm tra và nạp CSV vào SQLite, chống trùng lặp, ghi log và phân loại file lỗi.
+
+### Phát hiện Concept Drift
+So sánh nhu cầu trung bình 30 ngày gần nhất với 30 ngày trước. SKU thay đổi >60% → drift mạnh, 30–60% → drift vừa. Hiển thị tại Governance Dashboard.
+
+---
+
+## Cài đặt & Chạy
+
+### 1. Frontend
 
 ```bash
-pip install -r requirements.txt
+cd dashboard
+npm install
+npm run dev
 ```
 
-### Chuẩn bị dữ liệu
+Truy cập: `http://localhost:3000`
+
+### 2. Backend
 
 ```bash
-python prepare_data.py
+cd backend
+pip3 install -r requirements.txt
+python3 scheduler.py
 ```
 
-Hoặc chỉ định thư mục:
+API chạy tại: `http://localhost:8000`
+
+### 3. Tạo dữ liệu mẫu (tuỳ chọn)
 
 ```bash
-python prepare_data.py --data-dir data --out-dir processed
-```
-
-### Chạy dashboard
-
-```bash
-streamlit run app.py
+cd backend
+python3 generate_sample.py --files 3 --rows 500
 ```
 
 ---
 
-## 6. Cấu trúc files
+## Cấu trúc thư mục
 
 ```
-.
-├── app.py                    # Streamlit dashboard (7 tabs)
-├── prepare_data.py           # Data preprocessing script
-├── requirements.txt
-├── README.md
-├── data/
-│   ├── train.csv             # REQUIRED: lịch sử giao dịch
-│   ├── sample_submission.csv # REQUIRED: danh sách SKUs
-│   ├── submission_v22.csv    # RECOMMENDED: best forecast
-│   ├── submission_v19.csv    # Optional
-│   ├── submission_v6.csv     # Optional (dùng tính disagreement)
-│   ├── submission_v2.csv     # Optional (dùng tính disagreement)
-│   ├── submission_v16.csv    # Optional
-│   └── model_scores.csv      # Model performance table
-└── processed/                # Output của prepare_data.py
-    ├── sku_summary.csv
-    ├── forecast_summary.csv
-    ├── risk_table.csv
-    ├── model_disagreement.csv
-    └── manual_review_queue.csv
+HBAC/
+├── dashboard/               # Next.js frontend
+│   ├── app/
+│   │   ├── page.tsx         # Dashboard tổng quan
+│   │   ├── canh-bao/        # Giám sát rủi ro
+│   │   ├── danh-sach/       # Danh sách SKU
+│   │   ├── chi-tiet/        # Phân tích chi tiết SKU
+│   │   ├── mo-phong/        # Mô phỏng tồn kho
+│   │   ├── governance/      # Quản trị hệ thống
+│   │   ├── tro-ly/          # Trợ lý AI
+│   │   └── api/             # Next.js API routes (proxy)
+│   ├── components/          # Sidebar, Topbar, StatusBadge...
+│   ├── lib/                 # roles, proposals, types
+│   └── context/             # RoleContext
+│
+├── backend/                 # Python backend
+│   ├── api/main.py          # FastAPI app + endpoints
+│   ├── ingestion/           # Validator + Pipeline
+│   ├── db/                  # SQLite schema
+│   ├── scheduler.py         # Entry point
+│   ├── generate_sample.py   # Tạo CSV mẫu
+│   └── data/
+│       ├── incoming/        # Thả CSV vào đây
+│       ├── processed/       # File đã xử lý thành công
+│       └── failed/          # File lỗi
+│
+├── pipeline/                # Scripts huấn luyện mô hình
+└── archive/                 # Ensemble blending scripts
 ```
 
 ---
 
-## 7. Files bắt buộc
+## Biến môi trường
 
-| File | Mô tả |
-|------|-------|
-| `data/train.csv` | Lịch sử giao dịch bán hàng |
-| `data/sample_submission.csv` | Danh sách 15,972 SKUs |
-| Ít nhất 1 file forecast | `submission_v22.csv` được khuyến nghị |
+Tạo file `dashboard/.env.local`:
 
----
-
-## 8. Files tùy chọn
-
-| File | Tác dụng |
-|------|---------|
-| `submission_v19.csv` | Model disagreement v19 vs v6 |
-| `submission_v6.csv` | Model disagreement |
-| `submission_v2.csv` | Model disagreement v6 vs v2 |
-| `submission_v16.csv` | So sánh với bản chính thức |
-
-App vẫn chạy bình thường nếu thiếu các file tùy chọn.
+```
+GEMINI_API_KEY=your_key_here
+INGESTION_API_URL=https://your-railway-url.railway.app
+```
 
 ---
 
-## 9. Giả định trong demo
+## Bối cảnh cuộc thi
 
-> **Lưu ý quan trọng:**
-> Dữ liệu tồn kho thực tế và lead time nhà cung cấp **không được cung cấp**
-> trong dataset cuộc thi.
-> 
-> Mô phỏng rủi ro stockout/overstock trong dashboard dựa trên tham số
-> do người dùng nhập (stock coverage, lead time, safety stock).
-> 
-> Trong triển khai thực tế, các giá trị này phải được lấy từ ERP/WMS.
+- **Dữ liệu:** 2020-11-17 → 2025-09-05, ~15.972 SKU, ~712K giao dịch
+- **Horizon dự báo:** 56 ngày (F1–F56)
+- **Metric:** WRMSSE
 
----
+| Phiên bản | Public WRMSSE | Private WRMSSE |
+|---|---|---|
+| v19 (Best Public) | 0.48881 | 0.53214 |
+| v22 (Best Overall) | **0.48881** | **0.52073** |
 
-## 10. Demo Script (cho buổi thi)
-
-1. **Tab Command Center** — Mở tab đầu, giới thiệu KPI, model score comparison, pipeline
-2. **Tab Risk & Action** — Filter P1 + High Profit + Low Reliability → xem SKUs cần xử lý ngay
-3. **Tab SKU Intelligence** — Chọn 1 SKU P1, giải thích reason codes và recommended action
-4. **Tab Replenishment Simulator** — Nhập current stock, điều chỉnh lead time, xem reorder quantity
-5. **Tab Manual Review Queue** — Giải thích human-in-the-loop approach
-6. **Tab Governance** — Model score table, ablation study, production policy
-7. **Tab Roadmap** — 3 giai đoạn PoC → Pilot → Full Rollout
-
----
-
-## 11. Tabs trong dashboard
-
-| Tab | Mục đích | Người dùng |
-|-----|---------|-----------|
-| 📊 Command Center | Executive overview | Management |
-| ⚠️ Risk & Action | Bảng vận hành SKU | Sales, Logistics |
-| 🔍 SKU Intelligence | Phân tích chi tiết 1 SKU | All |
-| 📦 Replenishment | What-if inventory | Logistics |
-| 📋 Review Queue | Human-in-the-loop | Sales, Logistics |
-| 🏛️ Governance | Model governance | Data Science, Management |
-| 🗺️ Roadmap | Deployment plan | Management |
-
----
-
-*"Forecast is not the final product. Decision intelligence is."*
+Chiến lược: Public horizon (F1–F28) dùng model champion (v19); Private horizon (F29–F56) dùng robust ensemble (70% v6 + 30% v2).
