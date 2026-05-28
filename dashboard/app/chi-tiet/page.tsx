@@ -92,11 +92,21 @@ function ChiTietContent() {
   const [aiText, setAiText]       = useState<string | null>(null)
   const [aiLoading, setAiLoading] = useState(false)
 
+  function normalizeSku(raw: string): string {
+    const v = raw.trim()
+    if (/^\d+$/.test(v)) return `SKU-${v}`
+    const m = v.match(/^sku[\s-]?(\d+)$/i)
+    if (m) return `SKU-${m[1]}`
+    return v.toUpperCase()
+  }
+
   function doSearch(id: string) {
-    if (!id) return
-    router.replace(`/chi-tiet?sku=${id}`)
+    if (!id.trim()) return
+    const normalized = normalizeSku(id)
+    setSearchInput(normalized)
+    router.replace(`/chi-tiet?sku=${normalized}`)
     setLoading(true); setNotFound(false); setAiText(null)
-    fetch(`/api/sku/${encodeURIComponent(id)}`).then(r => {
+    fetch(`/api/sku/${encodeURIComponent(normalized)}`).then(r => {
       if (!r.ok) { setNotFound(true); setLoading(false); return null }
       return r.json()
     }).then(d => { if (d) { setSku(d); setLoading(false) } })
@@ -161,7 +171,7 @@ function ChiTietContent() {
             value={searchInput}
             onChange={e => setSearchInput(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && doSearch(searchInput)}
-            placeholder="Nhập mã SKU và Enter"
+            placeholder="VD: 08063 hoặc SKU-08063"
             className="pl-9 pr-4 py-2 text-sm border border-slate-200 rounded-lg w-64 focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
@@ -318,7 +328,7 @@ function ChiTietContent() {
       {!sku && !loading && !notFound && (
         <div className="bg-white rounded-lg border border-slate-200 p-12 text-center">
           <Search size={40} className="mx-auto text-slate-200 mb-4" />
-          <p className="text-slate-400 text-sm">Nhập mã SKU (VD: SKU-09760) để xem chi tiết</p>
+          <p className="text-slate-400 text-sm">Nhập số (VD: 09760) hoặc mã đầy đủ (SKU-09760) rồi nhấn Enter</p>
         </div>
       )}
     </div>
