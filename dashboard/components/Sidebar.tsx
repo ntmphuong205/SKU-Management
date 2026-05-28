@@ -9,12 +9,12 @@ import {
 } from 'lucide-react'
 
 const NAV = [
-  { href: '/',          label: 'Tổng quan',            icon: LayoutDashboard },
-  { href: '/canh-bao',  label: 'Cảnh báo & Hành động', icon: AlertTriangle   },
-  { href: '/danh-sach', label: 'Danh sách SKU',         icon: List            },
-  { href: '/chi-tiet',  label: 'Chi tiết SKU',          icon: Search          },
-  { href: '/mo-phong',  label: 'Mô phỏng nhập hàng',   icon: PackageCheck    },
-  { href: '/tro-ly',    label: 'Trợ lý AI',             icon: Sparkles        },
+  { href: '/',          label: 'Tổng quan',         icon: LayoutDashboard },
+  { href: '/canh-bao',  label: 'Phân tích rủi ro',  icon: AlertTriangle   },
+  { href: '/danh-sach', label: 'Khám phá dữ liệu',  icon: List            },
+  { href: '/chi-tiet',  label: 'Dự báo chi tiết',   icon: Search          },
+  { href: '/mo-phong',  label: 'Tối ưu tồn kho',    icon: PackageCheck    },
+  { href: '/tro-ly',    label: 'Trợ lý AI',          icon: Sparkles        },
 ]
 
 export default function Sidebar() {

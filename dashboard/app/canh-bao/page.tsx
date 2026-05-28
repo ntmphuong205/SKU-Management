@@ -5,6 +5,10 @@ import { AlertTriangle, Download } from 'lucide-react'
 import Link from 'next/link'
 import StatusBadge, { IntelBadges } from '@/components/StatusBadge'
 import { ACTION_LABEL } from '@/lib/types'
+import {
+  BarChart, Bar, XAxis, YAxis, Tooltip,
+  ResponsiveContainer, Cell, LabelList,
+} from 'recharts'
 
 interface Row {
   ItemCode: string
@@ -133,8 +137,8 @@ export default function CanhBao() {
       {/* Header */}
       <div className="border-b border-slate-200 pb-4 flex items-start justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-slate-800">Cảnh báo & Hành động</h1>
-          <p className="text-sm text-slate-500 mt-0.5">Danh sách SKU cần xử lý — sắp xếp theo mức độ ưu tiên</p>
+          <h1 className="text-xl font-semibold text-slate-800">Phân tích rủi ro tồn kho</h1>
+          <p className="text-sm text-slate-500 mt-0.5">Phát hiện sớm rủi ro · Dự báo nhu cầu · Đề xuất hành động tối ưu</p>
         </div>
         <button
           onClick={handleExport}
@@ -161,6 +165,37 @@ export default function CanhBao() {
             <p className="text-2xl font-bold mt-0.5">{countsLoaded ? s.count : '…'}</p>
           </button>
         ))}
+      </div>
+
+      {/* Risk distribution chart */}
+      <div className="bg-white rounded-xl border border-slate-100 shadow-sm shadow-slate-200/50 p-5">
+        <h2 className="text-sm font-semibold text-slate-700 mb-1">Phân bố rủi ro theo loại</h2>
+        <p className="text-xs text-slate-400 mb-4">Số lượng SKU cần xử lý theo từng nhóm rủi ro — được phân tích tự động từ dữ liệu dự báo</p>
+        <ResponsiveContainer width="100%" height={140}>
+          <BarChart
+            layout="vertical"
+            data={[
+              { name: 'Nhập hàng ngay',     count: totalCounts.urgent,  fill: '#ef4444' },
+              { name: 'Cần xem xét',         count: totalCounts.review,  fill: '#f59e0b' },
+              { name: 'Kiểm tra hoàn hàng',  count: totalCounts.returns, fill: '#a855f7' },
+              { name: 'Hàng tồn chậm',       count: totalCounts.slow,    fill: '#0ea5e9' },
+            ]}
+            margin={{ left: 8, right: 48, top: 4, bottom: 4 }}
+          >
+            <XAxis type="number" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
+            <YAxis type="category" dataKey="name" tick={{ fontSize: 12 }} width={130} axisLine={false} tickLine={false} />
+            <Tooltip formatter={(v) => [`${Number(v).toLocaleString()} SKU`, 'Số lượng']} />
+            <Bar dataKey="count" radius={[0, 4, 4, 0]} maxBarSize={22}>
+              {[
+                { fill: '#ef4444' },
+                { fill: '#f59e0b' },
+                { fill: '#a855f7' },
+                { fill: '#0ea5e9' },
+              ].map((entry, i) => <Cell key={i} fill={entry.fill} fillOpacity={0.85} />)}
+              <LabelList dataKey="count" position="right" style={{ fontSize: 12, fill: '#475569', fontWeight: 600 }} />
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
       </div>
 
       {/* Filter bar */}
