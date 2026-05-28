@@ -144,9 +144,9 @@ export default function CanhBao() {
       <div className="grid grid-cols-4 gap-3">
         {[
           { label: '🔴 Nhập hàng ngay',      count: totalCounts.urgent,   bg: 'bg-red-50 border-red-200 text-red-800',           action: 'Prioritize replenishment'   },
-          { label: '🟡 Cần xem xét',          count: totalCounts.review,   bg: 'bg-amber-50 border-amber-200 text-amber-800',     action: 'Review with Sales'          },
+          { label: '🔵 Cần xem xét',          count: totalCounts.review,   bg: 'bg-blue-50 border-blue-200 text-blue-800',        action: 'Review with Sales'          },
           { label: '🟣 Kiểm tra hoàn hàng',   count: totalCounts.returns,  bg: 'bg-purple-50 border-purple-200 text-purple-800',  action: 'Check return/quality issue' },
-          { label: '🔵 Hàng tồn chậm',        count: totalCounts.slow,     bg: 'bg-sky-50 border-sky-200 text-sky-800',           action: 'Review slow-moving stock'   },
+          { label: '⚪ Hàng tồn chậm',        count: totalCounts.slow,     bg: 'bg-slate-50 border-slate-200 text-slate-700',     action: 'Review slow-moving stock'   },
         ].map(s => (
           <button
             key={s.label}
@@ -168,9 +168,9 @@ export default function CanhBao() {
             layout="vertical"
             data={[
               { name: 'Nhập hàng ngay',     count: totalCounts.urgent,  fill: '#ef4444' },
-              { name: 'Cần xem xét',         count: totalCounts.review,  fill: '#f59e0b' },
+              { name: 'Cần xem xét',         count: totalCounts.review,  fill: '#3b82f6' },
               { name: 'Kiểm tra hoàn hàng',  count: totalCounts.returns, fill: '#a855f7' },
-              { name: 'Hàng tồn chậm',       count: totalCounts.slow,    fill: '#0ea5e9' },
+              { name: 'Hàng tồn chậm',       count: totalCounts.slow,    fill: '#94a3b8' },
             ]}
             margin={{ left: 8, right: 48, top: 4, bottom: 4 }}
           >
@@ -180,9 +180,9 @@ export default function CanhBao() {
             <Bar dataKey="count" radius={[0, 4, 4, 0]} maxBarSize={22}>
               {[
                 { fill: '#ef4444' },
-                { fill: '#f59e0b' },
+                { fill: '#3b82f6' },
                 { fill: '#a855f7' },
-                { fill: '#0ea5e9' },
+                { fill: '#94a3b8' },
               ].map((entry, i) => <Cell key={i} fill={entry.fill} fillOpacity={0.85} />)}
               <LabelList dataKey="count" position="right" style={{ fontSize: 12, fill: '#475569', fontWeight: 600 }} />
             </Bar>
@@ -214,9 +214,9 @@ export default function CanhBao() {
       {/* Legend */}
       <div className="flex gap-4 text-xs text-slate-500">
         <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-red-100 inline-block border border-red-200"/>Nhập hàng ngay</span>
-        <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-amber-100 inline-block border border-amber-200"/>Cần xem xét</span>
+        <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-blue-100 inline-block border border-blue-200"/>Cần xem xét</span>
         <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-purple-100 inline-block border border-purple-200"/>Kiểm tra hoàn hàng</span>
-        <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-sky-100 inline-block border border-sky-200"/>Hàng tồn chậm</span>
+        <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-slate-100 inline-block border border-slate-200"/>Hàng tồn chậm</span>
       </div>
 
       {/* Table */}
