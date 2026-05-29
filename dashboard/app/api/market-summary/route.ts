@@ -115,10 +115,21 @@ BULLET: [điểm 3 nếu cần]`
     const raw = await callGemini(prompt)
 
     const lines = raw.split('\n')
-    const summaryLine = lines.find(l => l.startsWith('SUMMARY:'))
-    const bulletLines = lines.filter(l => l.startsWith('BULLET:'))
 
-    const summary = summaryLine?.replace('SUMMARY:', '').trim() ?? lines[0]
+    // Gom tất cả dòng từ SUMMARY: đến trước BULLET: đầu tiên
+    const summaryStart = lines.findIndex(l => l.startsWith('SUMMARY:'))
+    const bulletStart  = lines.findIndex(l => l.startsWith('BULLET:'))
+    let summary = ''
+    if (summaryStart !== -1) {
+      const end = bulletStart !== -1 ? bulletStart : lines.length
+      const summaryLines = lines.slice(summaryStart, end)
+      summaryLines[0] = summaryLines[0].replace('SUMMARY:', '')
+      summary = summaryLines.join(' ').replace(/\s+/g, ' ').trim()
+    } else {
+      summary = lines[0] ?? ''
+    }
+
+    const bulletLines = lines.filter(l => l.startsWith('BULLET:'))
     const bullets = bulletLines.map(l => l.replace('BULLET:', '').trim()).filter(Boolean)
 
     return NextResponse.json({
