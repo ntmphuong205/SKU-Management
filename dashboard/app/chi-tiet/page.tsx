@@ -206,26 +206,12 @@ function ChiTietContent() {
       `Hành động: ${sku.recommended_action}. ` +
       `Viết 2–3 câu bằng tiếng Việt — chỉ giải thích ý nghĩa kinh doanh và khuyến nghị quan trọng nhất, không liệt kê số liệu thô.`
 
-    fetch('/api/chat', {
+    fetch('/api/sku-analysis', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: prompt, history: [] }),
+      body: JSON.stringify({ prompt }),
     })
-      .then(async r => {
-        const ct = r.headers.get('Content-Type') ?? ''
-        if (ct.includes('text/plain') && r.body) {
-          const reader = r.body.getReader()
-          const decoder = new TextDecoder()
-          let text = ''
-          while (true) {
-            const { done, value } = await reader.read()
-            if (done) break
-            text += decoder.decode(value, { stream: true })
-          }
-          return { reply: text }
-        }
-        return r.json()
-      })
+      .then(r => r.json())
       .then(d => { setAiText(d.reply ?? null); setAiLoading(false) })
       .catch(() => setAiLoading(false))
   }, [sku?.ItemCode])
