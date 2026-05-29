@@ -1,9 +1,11 @@
 export interface SkuOverride {
   sku: string
-  multiplier: number   // 0.5 = giảm 50%, 1.0 = giữ nguyên, 2.0 = tăng gấp đôi
+  inputPrice: number | null   // giá nhập/đv (VND) — user nhập tay
+  sellPrice: number | null    // giá bán/đv (VND) — ước tính hoặc nhập tay
+  planQty: number             // số lượng kế hoạch đặt
   note: string
-  updatedAt: string    // ISO string
-  updatedBy: string    // 'logistics' | 'manager'
+  updatedAt: string
+  updatedBy: string
 }
 
 const KEY = 'sku_overrides_v1'

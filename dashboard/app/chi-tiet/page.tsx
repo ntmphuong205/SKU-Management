@@ -2,7 +2,7 @@
 
 import { useEffect, useState, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
-import { Search, Sparkles, SlidersHorizontal, CheckCircle2, Trash2 } from 'lucide-react'
+import { Search, Sparkles, Calculator, CheckCircle2, Trash2 } from 'lucide-react'
 import StatusBadge, { IntelBadges } from '@/components/StatusBadge'
 import KpiCard from '@/components/KpiCard'
 import { RELIABILITY_LABEL } from '@/lib/types'
@@ -93,10 +93,12 @@ function ChiTietContent() {
   const [notFound, setNotFound] = useState(false)
 
   // ── Override states ───────────────────────────────────────────
-  const [override, setOverride]   = useState<SkuOverride | null>(null)
-  const [multInput, setMultInput] = useState(1.0)
-  const [noteInput, setNoteInput] = useState('')
-  const [savedAnim, setSavedAnim] = useState(false)
+  const [override, setOverride]     = useState<SkuOverride | null>(null)
+  const [inputPrice, setInputPrice] = useState('')   // giá nhập/đv
+  const [sellPrice, setSellPrice]   = useState('')   // giá bán/đv
+  const [planQty, setPlanQty]       = useState('')   // số lượng kế hoạch
+  const [noteInput, setNoteInput]   = useState('')
+  const [savedAnim, setSavedAnim]   = useState(false)
 
   // ── AI explanation ────────────────────────────────────────────
   const [aiText, setAiText]       = useState<string | null>(null)
@@ -124,20 +126,32 @@ function ChiTietContent() {
 
   useEffect(() => { if (skuParam) { setSearchInput(skuParam); doSearch(skuParam) } }, [skuParam])
 
-  // Load override whenever SKU changes
+  // Load override whenever SKU changes; pre-fill sell price from revenue estimate
   useEffect(() => {
     if (!sku) return
     const ov = getOverride(sku.ItemCode)
     setOverride(ov)
-    setMultInput(ov?.multiplier ?? 1.0)
-    setNoteInput(ov?.note ?? '')
+    if (ov) {
+      setInputPrice(ov.inputPrice != null ? String(ov.inputPrice) : '')
+      setSellPrice(ov.sellPrice != null ? String(ov.sellPrice) : '')
+      setPlanQty(String(ov.planQty))
+      setNoteInput(ov.note)
+    } else {
+      const est = sku.total_sales_qty > 0 ? Math.round(sku.revenue / sku.total_sales_qty) : 0
+      setInputPrice('')
+      setSellPrice(est > 0 ? String(est) : '')
+      setPlanQty(sku._reorder > 0 ? String(sku._reorder) : '')
+      setNoteInput('')
+    }
   }, [sku?.ItemCode])
 
   function handleSaveOverride() {
     if (!sku) return
     const ov: SkuOverride = {
       sku: sku.ItemCode,
-      multiplier: multInput,
+      inputPrice: inputPrice ? parseFloat(inputPrice) : null,
+      sellPrice:  sellPrice  ? parseFloat(sellPrice)  : null,
+      planQty:    parseInt(planQty) || 0,
       note: noteInput,
       updatedAt: new Date().toISOString(),
       updatedBy: role ?? 'logistics',
@@ -152,15 +166,24 @@ function ChiTietContent() {
     if (!sku) return
     removeOverride(sku.ItemCode)
     setOverride(null)
-    setMultInput(1.0)
+    const est = sku.total_sales_qty > 0 ? Math.round(sku.revenue / sku.total_sales_qty) : 0
+    setInputPrice('')
+    setSellPrice(est > 0 ? String(est) : '')
+    setPlanQty(sku._reorder > 0 ? String(sku._reorder) : '')
     setNoteInput('')
   }
 
-  // Adjusted forecast values (apply multiplier if override exists)
-  const mult = override?.multiplier ?? 1
-  const adjF28  = sku ? Math.round(sku.forecast_28d_validation * mult) : 0
-  const adjF29  = sku ? Math.round(sku.forecast_28d_evaluation * mult) : 0
-  const adjF56  = sku ? Math.round(sku.forecast_56d_total * mult) : 0
+  // Financial simulation computed values
+  const estimatedSell = sku && sku.total_sales_qty > 0 ? Math.round(sku.revenue / sku.total_sales_qty) : 0
+  const ipNum = parseFloat(inputPrice) || 0
+  const spNum = parseFloat(sellPrice)  || 0
+  const pqNum = parseInt(planQty)      || 0
+  const f28   = sku?.forecast_28d_validation ?? 0
+  const chiPhiVon  = ipNum * pqNum
+  const doanhThuDK = spNum * f28
+  const loiNhuanDK = (spNum - ipNum) * f28
+  const marginPct  = spNum > 0 && ipNum > 0 ? (spNum - ipNum) / spNum * 100 : null
+  const hasCalc    = ipNum > 0 || spNum > 0
 
   // Auto AI explanation when SKU changes
   useEffect(() => {
@@ -285,18 +308,11 @@ function ChiTietContent() {
 
           {/* KPI row 1 — Dự báo */}
           <div>
-            <div className="flex items-center gap-3 mb-3">
-              <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-widest">Dự báo nhu cầu</h2>
-              {override && mult !== 1 && (
-                <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
-                  <SlidersHorizontal size={10} /> Đã điều chỉnh ×{mult.toFixed(1)}
-                </span>
-              )}
-            </div>
+            <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-3">Dự báo nhu cầu</h2>
             <div className="grid grid-cols-3 gap-3">
-              <KpiCard label={`Dự báo 28 ngày tới (F1–F28)${override && mult !== 1 ? ' — đã điều chỉnh' : ''}`}  value={fmt(adjF28, ' đv')} variant="info" />
-              <KpiCard label={`Dự báo 28 ngày tiếp (F29–F56)${override && mult !== 1 ? ' — đã điều chỉnh' : ''}`} value={fmt(adjF29, ' đv')} />
-              <KpiCard label={`Tổng dự báo 56 ngày${override && mult !== 1 ? ' — đã điều chỉnh' : ''}`}           value={fmt(adjF56, ' đv')} variant="info" />
+              <KpiCard label="Dự báo 28 ngày tới (F1–F28)"  value={fmt(sku.forecast_28d_validation, ' đv')} variant="info" />
+              <KpiCard label="Dự báo 28 ngày tiếp (F29–F56)" value={fmt(sku.forecast_28d_evaluation, ' đv')} />
+              <KpiCard label="Tổng dự báo 56 ngày"           value={fmt(sku.forecast_56d_total, ' đv')} variant="info" />
             </div>
           </div>
 
@@ -377,59 +393,128 @@ function ChiTietContent() {
               </div>
             </div>
           </div>
-          {/* ── Override panel — chỉ Logistics / Quản lý ──────── */}
+          {/* ── Tái đánh giá tài chính — chỉ Logistics / Quản lý ── */}
           {canOverride && (
-            <div className="rounded-xl border border-amber-200 bg-amber-50/60 p-5 space-y-4">
-              <div className="flex items-center justify-between">
+            <div className="rounded-xl border border-emerald-200 bg-emerald-50/40 p-5 space-y-4">
+              {/* Header */}
+              <div className="flex items-center justify-between flex-wrap gap-2">
                 <div className="flex items-center gap-2">
-                  <SlidersHorizontal size={15} className="text-amber-600" />
-                  <h3 className="text-sm font-semibold text-amber-800">Điều chỉnh thông số dự báo</h3>
+                  <Calculator size={15} className="text-emerald-600" />
+                  <h3 className="text-sm font-semibold text-emerald-800">Tái đánh giá tài chính</h3>
+                  <span className="text-[11px] text-slate-400">(mô phỏng — giá đơn vị không có trong tập dữ liệu)</span>
                 </div>
                 {override && (
                   <span className="text-[11px] text-slate-500">
-                    Cập nhật lần cuối: {new Date(override.updatedAt).toLocaleString('vi-VN')} bởi <b>{override.updatedBy}</b>
+                    Lưu lúc {new Date(override.updatedAt).toLocaleString('vi-VN')} · <b>{override.updatedBy}</b>
                   </span>
                 )}
               </div>
 
-              {/* Multiplier slider */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <label className="text-sm text-slate-700 font-medium">
-                    Hệ số điều chỉnh dự báo
+              {/* 3 input fields */}
+              <div className="grid grid-cols-3 gap-4">
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-slate-600">Giá nhập/đv (đ)</label>
+                  <input
+                    type="number" min={0}
+                    value={inputPrice}
+                    onChange={e => setInputPrice(e.target.value)}
+                    placeholder="Nhập tay"
+                    className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-400 bg-white"
+                  />
+                  <p className="text-[10px] text-slate-400">VD: giá mua từ nhà cung cấp</p>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-slate-600">
+                    Giá bán/đv (đ)
+                    {estimatedSell > 0 && (
+                      <span className="ml-1 text-emerald-600 font-normal">(ước tính từ lịch sử)</span>
+                    )}
                   </label>
-                  <span className={`text-sm font-bold px-2 py-0.5 rounded ${
-                    multInput < 0.9 ? 'bg-red-100 text-red-700'
-                    : multInput > 1.1 ? 'bg-blue-100 text-blue-700'
-                    : 'bg-slate-100 text-slate-600'
-                  }`}>×{multInput.toFixed(1)}</span>
+                  <input
+                    type="number" min={0}
+                    value={sellPrice}
+                    onChange={e => setSellPrice(e.target.value)}
+                    placeholder={estimatedSell > 0 ? `≈ ${estimatedSell.toLocaleString()}` : 'Nhập tay'}
+                    className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-400 bg-white"
+                  />
+                  {estimatedSell > 0 && (
+                    <p className="text-[10px] text-slate-400">Ước tính: {estimatedSell.toLocaleString()} đ/đv</p>
+                  )}
                 </div>
-                <input
-                  type="range" min={0.1} max={3.0} step={0.1}
-                  value={multInput}
-                  onChange={e => setMultInput(parseFloat(e.target.value))}
-                  className="w-full accent-amber-500"
-                />
-                <div className="flex justify-between text-[10px] text-slate-400">
-                  <span>×0.1 (giảm 90%)</span>
-                  <span>×1.0 (giữ nguyên)</span>
-                  <span>×3.0 (tăng gấp 3)</span>
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-slate-600">SL kế hoạch đặt (đv)</label>
+                  <input
+                    type="number" min={0}
+                    value={planQty}
+                    onChange={e => setPlanQty(e.target.value)}
+                    className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-400 bg-white"
+                  />
+                  {sku._reorder > 0 && (
+                    <p className="text-[10px] text-slate-400">Đề xuất hệ thống: {sku._reorder.toLocaleString()} đv</p>
+                  )}
                 </div>
-                <p className="text-xs text-slate-500">
-                  Dự báo điều chỉnh: <b>{fmt(Math.round(sku.forecast_56d_total * multInput), ' đv')}</b> trong 56 ngày
-                  {multInput !== 1 && <span className="ml-1 text-slate-400">(gốc: {fmt(sku.forecast_56d_total, ' đv')})</span>}
-                </p>
               </div>
+
+              {/* Live calculation */}
+              {hasCalc && (
+                <div className="bg-white rounded-lg border border-emerald-100 p-4">
+                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">
+                    Dự tính tài chính — dựa trên dự báo 28 ngày ({f28.toLocaleString(undefined,{maximumFractionDigits:0})} đv)
+                  </p>
+                  <div className="grid grid-cols-2 gap-x-8 gap-y-2.5">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-slate-500">Chi phí vốn kế hoạch</span>
+                      <span className="font-semibold text-slate-800">
+                        {ipNum > 0 && pqNum > 0 ? fmt(chiPhiVon, ' đ') : '—'}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-slate-500">Doanh thu dự kiến</span>
+                      <span className="font-semibold text-slate-800">
+                        {spNum > 0 ? fmt(doanhThuDK, ' đ') : '—'}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-slate-500">Lợi nhuận dự kiến</span>
+                      <span className={`font-semibold ${
+                        ipNum > 0 && spNum > 0
+                          ? loiNhuanDK >= 0 ? 'text-emerald-700' : 'text-red-600'
+                          : 'text-slate-400'
+                      }`}>
+                        {ipNum > 0 && spNum > 0
+                          ? `${loiNhuanDK >= 0 ? '+' : ''}${fmt(loiNhuanDK, ' đ')}`
+                          : '—'}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-slate-500">Biên lợi nhuận</span>
+                      <span className={`font-bold ${
+                        marginPct === null ? 'text-slate-400'
+                        : marginPct >= 20 ? 'text-emerald-700'
+                        : marginPct >= 0  ? 'text-amber-600'
+                        : 'text-red-600'
+                      }`}>
+                        {marginPct !== null ? `${marginPct.toFixed(1)}%` : '—'}
+                      </span>
+                    </div>
+                  </div>
+                  {ipNum > 0 && spNum > 0 && spNum < ipNum && (
+                    <p className="mt-3 text-xs text-red-600 font-medium">
+                      Giá bán thấp hơn giá nhập — kinh doanh bị lỗ trên SKU này.
+                    </p>
+                  )}
+                </div>
+              )}
 
               {/* Note */}
               <div className="space-y-1">
-                <label className="text-sm text-slate-700 font-medium">Lý do điều chỉnh</label>
+                <label className="text-xs font-medium text-slate-600">Ghi chú</label>
                 <textarea
                   value={noteInput}
                   onChange={e => setNoteInput(e.target.value)}
-                  placeholder="VD: Nhà cung cấp tăng giá đầu vào 2×, dự kiến cầu giảm. Chờ xác nhận từ phía Kinh doanh."
+                  placeholder="VD: Giá nhập tăng 3× từ tháng 6 do nhà cung cấp điều chỉnh. Biên LN giảm còn ~15%, cần xem xét điều chỉnh giá bán."
                   rows={2}
-                  className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-amber-400 bg-white"
+                  className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-emerald-400 bg-white"
                 />
               </div>
 
@@ -438,19 +523,17 @@ function ChiTietContent() {
                 <button
                   onClick={handleSaveOverride}
                   className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-                    savedAnim
-                      ? 'bg-emerald-600 text-white'
-                      : 'bg-amber-600 hover:bg-amber-700 text-white'
+                    savedAnim ? 'bg-emerald-600 text-white' : 'bg-emerald-600 hover:bg-emerald-700 text-white'
                   }`}
                 >
-                  {savedAnim ? <><CheckCircle2 size={14} /> Đã lưu</> : 'Lưu điều chỉnh'}
+                  {savedAnim ? <><CheckCircle2 size={14} /> Đã lưu</> : 'Lưu đánh giá'}
                 </button>
                 {override && (
                   <button
                     onClick={handleRemoveOverride}
                     className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-lg border border-slate-200 text-slate-600 hover:bg-red-50 hover:border-red-200 hover:text-red-600 transition-colors"
                   >
-                    <Trash2 size={13} /> Xóa điều chỉnh
+                    <Trash2 size={13} /> Xóa
                   </button>
                 )}
               </div>
