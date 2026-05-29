@@ -221,7 +221,7 @@ function MoPhongContent() {
               <div className="flex justify-between text-slate-500">
                 <span>Dự báo 56 ngày (điều chỉnh)</span>
                 <span className="font-mono font-medium">
-                  {Math.round(afpdAdj * 56).toLocaleString()} units
+                  {Math.round(afpdAdj * 56).toLocaleString()} đv
                 </span>
               </div>
             </div>
@@ -316,7 +316,7 @@ function MoPhongContent() {
                 <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Kết quả</p>
                 {stockout ? (
                   <p className="text-lg font-bold text-red-700 mt-0.5">
-                    Khuyến nghị đặt hàng: <span className="text-2xl">{Math.ceil(reorder).toLocaleString()} units</span>
+                    Khuyến nghị đặt hàng: <span className="text-2xl">{Math.ceil(reorder).toLocaleString()} đv</span>
                   </p>
                 ) : (
                   <p className="text-lg font-bold text-green-700 mt-0.5">

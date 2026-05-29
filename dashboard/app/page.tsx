@@ -157,9 +157,9 @@ export default function TongQuan() {
         <div>
           <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-3">Dự báo nhu cầu</h2>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <KpiCard label="Tổng nhu cầu 28 ngày tới" value={kpis ? fmt(kpis.total_forecast_28d) + ' units' : '—'}
+            <KpiCard label="Tổng nhu cầu 28 ngày tới" value={kpis ? fmt(kpis.total_forecast_28d) + ' đv' : '—'}
               sub="F1–F28" icon={TrendingUp} variant="info" />
-            <KpiCard label="Tổng nhu cầu 56 ngày tới" value={kpis ? fmt(kpis.total_forecast_56d) + ' units' : '—'}
+            <KpiCard label="Tổng nhu cầu 56 ngày tới" value={kpis ? fmt(kpis.total_forecast_56d) + ' đv' : '—'}
               sub="F1–F56" icon={BarChart3} />
             <KpiCard label="SKU đang hoạt động" value={kpis ? kpis.active_skus.toLocaleString() : '—'}
               sub={`/ ${kpis?.total_skus.toLocaleString() ?? '—'} tổng SKU`} icon={Activity} variant="success" />
@@ -204,7 +204,7 @@ export default function TongQuan() {
                   formatter={(v, name) =>
                     name === 'Doanh thu (triệu)'
                       ? [`${Number(v).toLocaleString()} triệu đ`, 'Doanh thu']
-                      : [`${Number(v).toLocaleString()} units`, 'Số lượng bán']
+                      : [`${Number(v).toLocaleString()} đv`, 'Số lượng bán']
                   }
                   labelFormatter={l => `Tháng ${l}`}
                 />

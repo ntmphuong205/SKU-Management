@@ -814,8 +814,8 @@ export default function GovernancePage() {
               </BarChart>
             </ResponsiveContainer>
             <p className="text-[11px] text-slate-400 mt-3 border-t border-slate-100 pt-3">
-              SKU <strong>Frequent</strong> và <strong>Active</strong> có độ tin cậy dự báo cao nhất.
-              SKU <strong>Intermittent</strong> và <strong>Dormant</strong> nên được giám sát riêng.
+              SKU <strong>Bán thường xuyên</strong> và <strong>Đang bán</strong> có độ tin cậy dự báo cao nhất.
+              SKU <strong>Bán gián đoạn</strong> và <strong>Không còn bán</strong> nên được giám sát riêng.
             </p>
           </div>
         </div>
