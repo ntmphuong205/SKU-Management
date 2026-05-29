@@ -16,6 +16,16 @@ interface Signal {
   desc: string
 }
 
+const DEMO_SUMMARY = {
+  summary: 'Thị trường phụ tùng ô tô trong nước đang chịu áp lực từ biến động tỷ giá USD/VND và chi phí vận chuyển tăng, ảnh hưởng trực tiếp đến giá nhập khẩu linh kiện. Nhu cầu bảo dưỡng xe cá nhân duy trì ổn định, trong khi nhóm phụ tùng thay thế định kỳ có dấu hiệu tăng nhẹ vào cuối quý.',
+  bullets: [
+    'Kiểm tra lại biên lợi nhuận các SKU nhập khẩu do tỷ giá biến động — ưu tiên nhóm High Profit trước.',
+    'Cân nhắc đặt hàng sớm với nhà cung cấp có lead time > 14 ngày trước khi cước vận tải tăng thêm.',
+    'Theo dõi tồn kho nhóm phụ tùng bảo dưỡng định kỳ — nhu cầu có thể tăng 15–20% trong 4 tuần tới.',
+  ],
+  generatedAt: new Date().toISOString(),
+}
+
 const macroSignals: Signal[] = [
   {
     id: 1, type: 'critical', time: '10 phút trước',
@@ -103,7 +113,7 @@ export default function Topbar() {
   // Market summary state
   const [summary, setSummary]               = useState<{ summary: string; bullets: string[]; generatedAt: string } | null>(null)
   const [summaryLoading, setSummaryLoading] = useState(false)
-  const [summaryError, setSummaryError]     = useState(false)
+  const [summaryIsLive, setSummaryIsLive]   = useState(false)
   const bellRef    = useRef<HTMLDivElement>(null)
   const profileRef = useRef<HTMLDivElement>(null)
   const { role, setRole } = useRole()
@@ -132,18 +142,22 @@ export default function Topbar() {
   async function loadSummary() {
     if (summaryLoading) return
     setSummaryLoading(true)
-    setSummaryError(false)
     try {
       const res = await fetch('/api/market-summary')
-      if (!res.ok) throw new Error('failed')
-      const data = await res.json()
-      if (data.summary) setSummary(data)
-      else throw new Error('empty')
-    } catch {
-      setSummaryError(true)
-    } finally {
-      setSummaryLoading(false)
-    }
+      if (res.ok) {
+        const data = await res.json()
+        if (data.summary) {
+          setSummary(data)
+          setSummaryIsLive(true)
+          setSummaryLoading(false)
+          return
+        }
+      }
+    } catch { /* fall through to demo */ }
+    // Fallback: demo data
+    setSummary({ ...DEMO_SUMMARY, generatedAt: new Date().toISOString() })
+    setSummaryIsLive(false)
+    setSummaryLoading(false)
   }
 
   useEffect(() => {
@@ -153,9 +167,8 @@ export default function Topbar() {
   }, [])
 
   useEffect(() => {
-    if (activeTab === 'summary' && !summary && !summaryLoading) {
-      loadSummary()
-    }
+    if (activeTab === 'summary' && !summary && !summaryLoading) loadSummary()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab])
 
   useEffect(() => {
@@ -307,16 +320,6 @@ export default function Topbar() {
                   </div>
                 )}
 
-                {summaryError && !summaryLoading && (
-                  <div className="px-5 py-8 text-center space-y-3">
-                    <p className="text-sm text-slate-500">Không thể tạo tóm tắt lúc này.</p>
-                    <button onClick={loadSummary}
-                      className="text-xs text-blue-600 hover:underline font-medium">
-                      Thử lại
-                    </button>
-                  </div>
-                )}
-
                 {summary && !summaryLoading && (
                   <div className="p-4 space-y-4">
                     {/* Header */}
@@ -324,13 +327,19 @@ export default function Topbar() {
                       <div className="flex items-center gap-1.5">
                         <Sparkles size={13} className="text-blue-500" />
                         <span className="text-xs font-semibold text-slate-700">Tóm tắt thị trường hôm nay</span>
+                        {summaryIsLive
+                          ? <span className="inline-flex items-center gap-1 text-[10px] font-medium text-emerald-600 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded-full">
+                              <span className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse" />Live
+                            </span>
+                          : <span className="text-[10px] text-slate-400 bg-slate-100 border border-slate-200 px-1.5 py-0.5 rounded-full">Demo</span>
+                        }
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="text-[10px] text-slate-400">
                           {new Date(summary.generatedAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
                         </span>
-                        <button onClick={loadSummary} title="Làm mới"
-                          className="text-slate-400 hover:text-slate-600">
+                        <button onClick={() => { setSummary(null); setSummaryIsLive(false); loadSummary() }}
+                          title="Làm mới" className="text-slate-400 hover:text-slate-600">
                           <RefreshCw size={11} />
                         </button>
                       </div>
@@ -361,8 +370,8 @@ export default function Topbar() {
                     )}
 
                     <p className="text-[10px] text-slate-300 text-center pt-1">
-                      Tóm tắt từ {isLive ? 'VnExpress RSS · ' : 'dữ liệu mẫu · '}
-                      Gemini AI · Cập nhật mỗi 10 phút
+                      {summaryIsLive ? 'VnExpress RSS · Gemini AI' : 'Dữ liệu mẫu · Gemini AI'}
+                      {' '}· Cập nhật mỗi 10 phút
                     </p>
                   </div>
                 )}

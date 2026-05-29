@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 
-export const revalidate = 600 // cache 10 phút
+export const dynamic = 'force-dynamic'
 
 const GEMINI_KEY = process.env.GEMINI_API_KEY
 const BASE = 'https://generativelanguage.googleapis.com/v1beta'
