@@ -401,10 +401,14 @@ ${contextData}`
               if (raw === '[DONE]') continue
               try {
                 const json = JSON.parse(raw)
-                const text: string = json.choices?.[0]?.delta?.content ?? ''
-                if (text) {
-                  fullReply += text
-                  controller.enqueue(encoder.encode(text))
+                const content: string = json.choices?.[0]?.delta?.content ?? ''
+                const reasoning: string = json.choices?.[0]?.delta?.reasoning_content ?? ''
+                if (content) {
+                  fullReply += content
+                  controller.enqueue(encoder.encode(content))
+                } else if (reasoning) {
+                  // Keepalive trong lúc model đang reasoning — tránh Vercel timeout
+                  controller.enqueue(encoder.encode('\x00'))
                 }
               } catch { /* ignore parse errors */ }
             }
