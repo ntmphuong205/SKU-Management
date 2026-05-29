@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSkuData, getKpiSummary, enrichSku } from '@/lib/data'
 
+export const maxDuration = 60
+
 // ── Response cache ────────────────────────────────────────────
 interface CacheEntry { reply: string; chartData: ChartPayload | null; expiresAt: number }
 const responseCache = new Map<string, CacheEntry>()
