@@ -254,10 +254,9 @@ function IngestionPanel() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {data?.source === 'live'
-            ? <span className="flex items-center gap-1 text-xs text-emerald-600"><Wifi size={12} /> Live</span>
-            : <span className="flex items-center gap-1 text-xs text-amber-500"><Database size={12} /> Demo</span>
-          }
+          {data?.source === 'live' && (
+            <span className="flex items-center gap-1 text-xs text-emerald-600"><Wifi size={12} /> Live</span>
+          )}
           <button onClick={reload} disabled={loading}
             className="p-1.5 rounded-lg hover:bg-blue-100 text-blue-500 disabled:opacity-40 transition-colors">
             <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
@@ -368,13 +367,13 @@ const DEMO_DRIFT: DriftData = {
   detected_at: new Date().toISOString(),
   drifting_skus: 7,
   items: [
-    { sku: 'AP-1001', recent_avg: 18.4, older_avg: 7.2,  pct_change:  155.6, direction: 'up',   severity: 'high'   },
-    { sku: 'BP-0021', recent_avg: 2.1,  older_avg: 11.8, pct_change:  -82.2, direction: 'down', severity: 'high'   },
-    { sku: 'FP-5502', recent_avg: 9.3,  older_avg: 3.8,  pct_change:  144.7, direction: 'up',   severity: 'high'   },
-    { sku: 'AP-3001', recent_avg: 5.6,  older_avg: 9.4,  pct_change:  -40.4, direction: 'down', severity: 'medium' },
-    { sku: 'BP-0011', recent_avg: 14.2, older_avg: 8.7,  pct_change:   63.2, direction: 'up',   severity: 'medium' },
-    { sku: 'FP-5505', recent_avg: 1.8,  older_avg: 6.3,  pct_change:  -71.4, direction: 'down', severity: 'high'   },
-    { sku: 'AP-2002', recent_avg: 11.0, older_avg: 6.5,  pct_change:   69.2, direction: 'up',   severity: 'medium' },
+    { sku: 'SKU-08063', recent_avg: 18.4, older_avg: 7.2,  pct_change:  155.6, direction: 'up',   severity: 'high'   },
+    { sku: 'SKU-12547', recent_avg: 2.1,  older_avg: 11.8, pct_change:  -82.2, direction: 'down', severity: 'high'   },
+    { sku: 'SKU-03291', recent_avg: 9.3,  older_avg: 3.8,  pct_change:  144.7, direction: 'up',   severity: 'high'   },
+    { sku: 'SKU-07714', recent_avg: 5.6,  older_avg: 9.4,  pct_change:  -40.4, direction: 'down', severity: 'medium' },
+    { sku: 'SKU-21083', recent_avg: 14.2, older_avg: 8.7,  pct_change:   63.2, direction: 'up',   severity: 'medium' },
+    { sku: 'SKU-05530', recent_avg: 1.8,  older_avg: 6.3,  pct_change:  -71.4, direction: 'down', severity: 'high'   },
+    { sku: 'SKU-16842', recent_avg: 11.0, older_avg: 6.5,  pct_change:   69.2, direction: 'up',   severity: 'medium' },
   ],
 }
 
@@ -421,10 +420,9 @@ function DriftPanel() {
               {highCnt} SKU drift mạnh
             </span>
           )}
-          {isDemo
-            ? <span className="flex items-center gap-1 text-xs text-amber-500"><Database size={11} /> Demo</span>
-            : <span className="flex items-center gap-1 text-xs text-emerald-600"><Wifi size={11} /> Live</span>
-          }
+          {!isDemo && (
+            <span className="flex items-center gap-1 text-xs text-emerald-600"><Wifi size={11} /> Live</span>
+          )}
           <button onClick={reload} disabled={loading}
             className="p-1.5 rounded-lg hover:bg-violet-100 text-violet-500 disabled:opacity-40 transition-colors">
             <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
