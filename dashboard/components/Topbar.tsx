@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { Bell, AlertCircle, AlertTriangle, Info, LogOut, RefreshCw } from 'lucide-react'
+import { Bell, AlertCircle, AlertTriangle, Info, LogOut, RefreshCw, Sparkles } from 'lucide-react'
 import { useRole } from '@/context/RoleContext'
 import { ROLES } from '@/lib/roles'
 import { useRouter } from 'next/navigation'
@@ -93,11 +93,17 @@ const PROFILE = {
 export default function Topbar() {
   const [open, setOpen]               = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
+  const [activeTab, setActiveTab]     = useState<'news' | 'summary'>('news')
   const [readIds, setReadIds]         = useState<Set<number>>(new Set())
   const [signals, setSignals]         = useState<Signal[]>(macroSignals)
   const [isLive, setIsLive]           = useState(false)
   const [refreshing, setRefreshing]   = useState(false)
   const [refreshedAt, setRefreshedAt] = useState<string | null>(null)
+
+  // Market summary state
+  const [summary, setSummary]               = useState<{ summary: string; bullets: string[]; generatedAt: string } | null>(null)
+  const [summaryLoading, setSummaryLoading] = useState(false)
+  const [summaryError, setSummaryError]     = useState(false)
   const bellRef    = useRef<HTMLDivElement>(null)
   const profileRef = useRef<HTMLDivElement>(null)
   const { role, setRole } = useRole()
@@ -123,11 +129,34 @@ export default function Topbar() {
     }
   }
 
+  async function loadSummary() {
+    if (summaryLoading) return
+    setSummaryLoading(true)
+    setSummaryError(false)
+    try {
+      const res = await fetch('/api/market-summary')
+      if (!res.ok) throw new Error('failed')
+      const data = await res.json()
+      if (data.summary) setSummary(data)
+      else throw new Error('empty')
+    } catch {
+      setSummaryError(true)
+    } finally {
+      setSummaryLoading(false)
+    }
+  }
+
   useEffect(() => {
     loadSignals()
     const interval = setInterval(loadSignals, 10 * 60 * 1000) // refresh every 10 min
     return () => clearInterval(interval)
   }, [])
+
+  useEffect(() => {
+    if (activeTab === 'summary' && !summary && !summaryLoading) {
+      loadSummary()
+    }
+  }, [activeTab])
 
   useEffect(() => {
     function onMouseDown(e: MouseEvent) {
@@ -180,76 +209,165 @@ export default function Topbar() {
         </button>
 
         {open && (
-          <div className="absolute right-0 top-11 w-[400px] bg-white border border-slate-200 rounded-xl shadow-xl shadow-slate-300/30 overflow-hidden">
+          <div className="absolute right-0 top-11 w-[420px] bg-white border border-slate-200 rounded-xl shadow-xl shadow-slate-300/30 overflow-hidden">
 
-            {/* Panel header */}
-            <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 bg-slate-50/60">
-              <div>
-                <div className="flex items-center gap-1.5">
-                  <p className="text-sm font-semibold text-slate-800">Tín hiệu thị trường</p>
-                  {isLive
-                    ? <span className="inline-flex items-center gap-1 text-[10px] font-medium text-emerald-600 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded-full">
-                        <span className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse" />Live
-                      </span>
-                    : <span className="text-[10px] text-slate-400 bg-slate-100 border border-slate-200 px-1.5 py-0.5 rounded-full">Demo</span>
-                  }
+            {/* Tab switcher */}
+            <div className="flex border-b border-slate-100 bg-slate-50/60">
+              <button
+                onClick={() => setActiveTab('news')}
+                className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-semibold transition-colors ${
+                  activeTab === 'news'
+                    ? 'text-slate-800 border-b-2 border-slate-800 bg-white'
+                    : 'text-slate-400 hover:text-slate-600'
+                }`}
+              >
+                <Bell size={12} />
+                Tin tức
+                {unread > 0 && activeTab !== 'news' && (
+                  <span className="w-4 h-4 rounded-full bg-red-500 text-white text-[9px] flex items-center justify-center font-bold">
+                    {unread}
+                  </span>
+                )}
+              </button>
+              <button
+                onClick={() => setActiveTab('summary')}
+                className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-semibold transition-colors ${
+                  activeTab === 'summary'
+                    ? 'text-blue-700 border-b-2 border-blue-600 bg-white'
+                    : 'text-slate-400 hover:text-slate-600'
+                }`}
+              >
+                <Sparkles size={12} />
+                Tóm tắt AI
+              </button>
+            </div>
+
+            {/* ── Tab: Tin tức ──────────────────────────────────── */}
+            {activeTab === 'news' && (
+              <>
+                <div className="flex items-center justify-between px-4 py-2.5 border-b border-slate-50">
+                  <div className="flex items-center gap-1.5">
+                    {isLive
+                      ? <span className="inline-flex items-center gap-1 text-[10px] font-medium text-emerald-600 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded-full">
+                          <span className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse" />Live
+                        </span>
+                      : <span className="text-[10px] text-slate-400 bg-slate-100 border border-slate-200 px-1.5 py-0.5 rounded-full">Demo</span>
+                    }
+                    <span className="text-[11px] text-slate-400">
+                      {unread > 0 ? `${unread} chưa đọc` : 'Đã đọc tất cả'}
+                      {isLive && refreshedLabel() ? ` · ${refreshedLabel()}` : ''}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button onClick={loadSignals} disabled={refreshing}
+                      className="text-slate-400 hover:text-slate-600 disabled:opacity-40" title="Làm mới">
+                      <RefreshCw size={12} className={refreshing ? 'animate-spin' : ''} />
+                    </button>
+                    {unread > 0 && (
+                      <button onClick={markAllRead} className="text-[11px] text-blue-600 hover:text-blue-800 font-medium">
+                        Đã đọc
+                      </button>
+                    )}
+                  </div>
                 </div>
-                <p className="text-[11px] text-slate-400 mt-0.5">
-                  {unread > 0 ? `${unread} chưa đọc` : 'Đã đọc tất cả'}
-                  {isLive && refreshedLabel() ? ` · ${refreshedLabel()}` : ' · VnExpress'}
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={loadSignals}
-                  disabled={refreshing}
-                  className="text-slate-400 hover:text-slate-600 transition-colors disabled:opacity-40"
-                  title="Làm mới"
-                >
-                  <RefreshCw size={13} className={refreshing ? 'animate-spin' : ''} />
-                </button>
-                {unread > 0 && (
-                  <button
-                    onClick={markAllRead}
-                    className="text-xs text-blue-600 hover:text-blue-800 font-medium"
-                  >
-                    Đã đọc
-                  </button>
+
+                <div className="overflow-y-auto max-h-[460px] divide-y divide-slate-50">
+                  {signals.map(signal => {
+                    const cfg  = TYPE_CFG[signal.type]
+                    const Icon = cfg.Icon
+                    const read = readIds.has(signal.id)
+                    return (
+                      <div key={signal.id} onClick={() => markRead(signal.id)}
+                        className={`flex gap-3 px-4 py-3 border-l-2 cursor-pointer transition-colors ${cfg.border} ${read ? 'bg-white opacity-55' : 'bg-white hover:bg-slate-50'}`}
+                      >
+                        <Icon size={14} className={`${cfg.text} shrink-0 mt-0.5`} strokeWidth={2} />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-start justify-between gap-2">
+                            <p className={`text-xs font-semibold leading-tight ${read ? 'text-slate-500' : 'text-slate-800'}`}>
+                              {signal.title}
+                            </p>
+                            <span className="text-[10px] text-slate-400 shrink-0 whitespace-nowrap">{signal.time}</span>
+                          </div>
+                          <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">{signal.desc}</p>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </>
+            )}
+
+            {/* ── Tab: Tóm tắt AI ───────────────────────────────── */}
+            {activeTab === 'summary' && (
+              <div className="overflow-y-auto max-h-[500px]">
+                {summaryLoading && (
+                  <div className="flex flex-col items-center justify-center py-12 gap-3 text-slate-400">
+                    <div className="w-8 h-8 rounded-full border-2 border-blue-200 border-t-blue-500 animate-spin" />
+                    <p className="text-xs">AI đang phân tích tin tức…</p>
+                  </div>
+                )}
+
+                {summaryError && !summaryLoading && (
+                  <div className="px-5 py-8 text-center space-y-3">
+                    <p className="text-sm text-slate-500">Không thể tạo tóm tắt lúc này.</p>
+                    <button onClick={loadSummary}
+                      className="text-xs text-blue-600 hover:underline font-medium">
+                      Thử lại
+                    </button>
+                  </div>
+                )}
+
+                {summary && !summaryLoading && (
+                  <div className="p-4 space-y-4">
+                    {/* Header */}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5">
+                        <Sparkles size={13} className="text-blue-500" />
+                        <span className="text-xs font-semibold text-slate-700">Tóm tắt thị trường hôm nay</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] text-slate-400">
+                          {new Date(summary.generatedAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                        <button onClick={loadSummary} title="Làm mới"
+                          className="text-slate-400 hover:text-slate-600">
+                          <RefreshCw size={11} />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Summary paragraph */}
+                    <div className="bg-blue-50/60 border border-blue-100 rounded-lg px-4 py-3">
+                      <p className="text-xs text-slate-700 leading-relaxed">{summary.summary}</p>
+                    </div>
+
+                    {/* Bullet points */}
+                    {summary.bullets.length > 0 && (
+                      <div className="space-y-2">
+                        <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+                          Điểm cần lưu ý trong vận hành
+                        </p>
+                        <ul className="space-y-2">
+                          {summary.bullets.map((b, i) => (
+                            <li key={i} className="flex gap-2.5 text-xs text-slate-700 leading-relaxed">
+                              <span className="w-5 h-5 rounded-full bg-amber-100 text-amber-700 text-[10px] font-bold flex items-center justify-center shrink-0 mt-0.5">
+                                {i + 1}
+                              </span>
+                              {b}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    <p className="text-[10px] text-slate-300 text-center pt-1">
+                      Tóm tắt từ {isLive ? 'VnExpress RSS · ' : 'dữ liệu mẫu · '}
+                      Gemini AI · Cập nhật mỗi 10 phút
+                    </p>
+                  </div>
                 )}
               </div>
-            </div>
-
-            {/* Signal list */}
-            <div className="overflow-y-auto max-h-[480px] divide-y divide-slate-50">
-              {signals.map(signal => {
-                const cfg  = TYPE_CFG[signal.type]
-                const Icon = cfg.Icon
-                const read = readIds.has(signal.id)
-                return (
-                  <div
-                    key={signal.id}
-                    onClick={() => markRead(signal.id)}
-                    className={`
-                      flex gap-3 px-4 py-3 border-l-2 cursor-pointer transition-colors
-                      ${cfg.border}
-                      ${read ? 'bg-white' : 'bg-white hover:bg-slate-50'}
-                      ${read ? 'opacity-55' : ''}
-                    `}
-                  >
-                    <Icon size={14} className={`${cfg.text} shrink-0 mt-0.5`} strokeWidth={2} />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between gap-2">
-                        <p className={`text-xs font-semibold leading-tight ${read ? 'text-slate-500' : 'text-slate-800'}`}>
-                          {signal.title}
-                        </p>
-                        <span className="text-[10px] text-slate-400 shrink-0 whitespace-nowrap">{signal.time}</span>
-                      </div>
-                      <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">{signal.desc}</p>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
+            )}
 
           </div>
         )}
