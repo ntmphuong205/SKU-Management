@@ -98,54 +98,9 @@ function buildFallbackReply(message: string): string {
   return `📊 **Tổng quan hệ thống hôm nay:**\n- Tổng **${kpis.total_skus.toLocaleString()} SKU**, ${kpis.active_skus.toLocaleString()} đang hoạt động\n- 🔴 **${kpis.action_urgent} SKU** cần nhập hàng ngay\n- ⚠️ **${kpis.stockout_risk_skus} SKU** nguy cơ hết hàng\n- 📦 **${kpis.overstock_skus} SKU** tồn kho dư\n- Tổng nhu cầu 56 ngày: **${Math.round(kpis.total_forecast_56d).toLocaleString()} đv**\n\nBạn muốn xem chi tiết mục nào?`
 }
 
-const GEMINI_KEY = process.env.GEMINI_API_KEY
-const BASE = 'https://generativelanguage.googleapis.com/v1beta'
-
-// Thứ tự ưu tiên model — tự động fallback nếu model không khả dụng
-const MODEL_CANDIDATES = [
-  'gemini-2.5-flash',
-  'gemini-2.5-flash-lite',
-  'gemini-3.5-flash',
-  'gemini-2.0-flash',
-  'gemini-2.0-flash-001',
-  'gemini-2.0-flash-lite',
-  'gemini-flash-latest',
-]
-
-let _resolvedModel: string | null = null
-
-async function resolveModel(): Promise<string> {
-  if (_resolvedModel) return _resolvedModel
-
-  try {
-    const res = await fetch(`${BASE}/models?key=${GEMINI_KEY}`)
-    const data = await res.json()
-    const available: string[] = (data.models ?? [])
-      .filter((m: { supportedGenerationMethods?: string[] }) =>
-        m.supportedGenerationMethods?.includes('generateContent')
-      )
-      .map((m: { name: string }) => m.name.replace('models/', ''))
-
-    for (const candidate of MODEL_CANDIDATES) {
-      if (available.includes(candidate)) {
-        _resolvedModel = candidate
-        console.log('Gemini model resolved:', candidate)
-        return candidate
-      }
-    }
-    // Fallback: dùng model đầu tiên có generateContent
-    if (available.length > 0) {
-      _resolvedModel = available[0]
-      return available[0]
-    }
-  } catch (e) {
-    console.error('resolveModel error:', e)
-  }
-
-  // Hard fallback
-  _resolvedModel = 'gemini-2.0-flash'
-  return _resolvedModel
-}
+const OPENAI_KEY = process.env.OPENAI_API_KEY
+const OPENAI_BASE = 'https://api.openai.com/v1'
+const OPENAI_MODEL = 'gpt-4o-mini'
 
 interface ChatMessage {
   role: 'user' | 'assistant'
@@ -441,7 +396,7 @@ export async function POST(req: NextRequest) {
   }
 
   // ── No API key → fallback ngay ────────────────────────────────
-  if (!GEMINI_KEY) {
+  if (!OPENAI_KEY) {
     const reply = buildFallbackReply(message)
     setCache(message, reply, chartData)
     return NextResponse.json({ reply, chartData: chartData ?? undefined })
@@ -468,24 +423,27 @@ Tồn kho mô phỏng: assumed_stock = avg_forecast_per_day × 21 ngày (lead ti
 DỮ LIỆU THỰC TẾ (cập nhật real-time):
 ${contextData}`
 
-  const contents = [
+  const messages = [
+    { role: 'system', content: systemPrompt },
     ...(history as ChatMessage[]).slice(-8).map(m => ({
-      role: m.role === 'user' ? 'user' : 'model',
-      parts: [{ text: m.content }],
+      role: m.role as 'user' | 'assistant',
+      content: m.content,
     })),
-    { role: 'user', parts: [{ text: message }] },
+    { role: 'user' as const, content: message },
   ]
 
   try {
-    const model = await resolveModel()
-    const url = `${BASE}/models/${model}:generateContent?key=${GEMINI_KEY}`
-    const res = await fetch(url, {
+    const res = await fetch(`${OPENAI_BASE}/chat/completions`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${OPENAI_KEY}`,
+      },
       body: JSON.stringify({
-        system_instruction: { parts: [{ text: systemPrompt }] },
-        contents,
-        generationConfig: { temperature: 0.2, maxOutputTokens: 1024, thinkingConfig: { thinkingBudget: 0 } },
+        model: OPENAI_MODEL,
+        messages,
+        temperature: 0.2,
+        max_tokens: 1024,
       }),
     })
 
@@ -493,14 +451,14 @@ ${contextData}`
 
     // Quota / rate-limit → dùng fallback thay vì báo lỗi
     if (!res.ok) {
-      console.warn('Gemini error, using fallback. Status:', res.status, data?.error?.message)
+      console.warn('OpenAI error, using fallback. Status:', res.status, data?.error?.message)
       const reply = buildFallbackReply(message)
       setCache(message, reply, chartData)
       return NextResponse.json({ reply, chartData: chartData ?? undefined })
     }
 
     const reply: string =
-      data.candidates?.[0]?.content?.parts?.[0]?.text ?? buildFallbackReply(message)
+      data.choices?.[0]?.message?.content ?? buildFallbackReply(message)
 
     setCache(message, reply, chartData)
     return NextResponse.json({ reply, chartData: chartData ?? undefined })
