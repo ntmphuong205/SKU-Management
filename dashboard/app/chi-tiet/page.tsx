@@ -296,20 +296,20 @@ function ChiTietContent() {
           </div>
 
           {/* ── AI Explanation ──────────────────────────────── */}
-          {(aiLoading || aiText) && (
-            <div className="rounded-lg border border-blue-100 bg-gradient-to-r from-blue-50 to-indigo-50 px-5 py-4">
-              <div className="flex items-center gap-2 mb-2">
-                <Sparkles size={14} className="text-blue-600 shrink-0" />
-                <span className="text-xs font-semibold text-blue-700 uppercase tracking-wide">
-                  Phân tích AI — {sku.ItemCode}
-                </span>
-              </div>
-              {aiLoading
-                ? <TypingDots />
-                : <p className="text-sm text-slate-700 leading-relaxed">{aiText}</p>
-              }
+          <div className="rounded-lg border border-blue-100 bg-gradient-to-r from-blue-50 to-indigo-50 px-5 py-4">
+            <div className="flex items-center gap-2 mb-2">
+              <Sparkles size={14} className="text-blue-600 shrink-0" />
+              <span className="text-xs font-semibold text-blue-700 uppercase tracking-wide">
+                Phân tích AI — {sku.ItemCode}
+              </span>
             </div>
-          )}
+            {aiLoading
+              ? <TypingDots />
+              : <p className="text-sm text-slate-700 leading-relaxed">
+                  {aiText ?? `${sku.ItemCode} thuộc nhóm ${sku.demand_class}, ${sku.profit_segment}. Hành động đề xuất: ${sku.recommended_action}.`}
+                </p>
+            }
+          </div>
 
           {/* KPI row 1 — Dự báo */}
           <div>

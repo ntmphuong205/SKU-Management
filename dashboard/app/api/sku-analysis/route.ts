@@ -1,36 +1,37 @@
 import { NextRequest, NextResponse } from 'next/server'
 
 export const dynamic = 'force-dynamic'
+export const maxDuration = 60
 
-const GEMINI_KEY = process.env.GEMINI_API_KEY
-const BASE = 'https://generativelanguage.googleapis.com/v1beta'
-const MODELS = ['gemini-2.0-flash', 'gemini-2.0-flash-lite']
+const MIMO_KEY  = process.env.MIMO_API_KEY
+const MIMO_BASE = 'https://api.xiaomimimo.com/v1'
+const MIMO_MODEL = 'mimo-v2.5-pro'
 
 export async function POST(req: NextRequest) {
   const { prompt } = await req.json()
-  if (!prompt?.trim()) return NextResponse.json({ reply: '' })
+  if (!prompt?.trim()) return NextResponse.json({ reply: null })
+  if (!MIMO_KEY)      return NextResponse.json({ reply: null })
 
-  if (!GEMINI_KEY) return NextResponse.json({ reply: null })
-
-  for (const model of MODELS) {
-    try {
-      const res = await fetch(`${BASE}/models/${model}:generateContent?key=${GEMINI_KEY}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ role: 'user', parts: [{ text: prompt }] }],
-          generationConfig: { temperature: 0.2, maxOutputTokens: 256 },
-        }),
-        signal: AbortSignal.timeout(8000),
-      })
-      if (!res.ok) continue
-      const data = await res.json()
-      const reply = data.candidates?.[0]?.content?.parts?.[0]?.text ?? ''
-      if (reply) return NextResponse.json({ reply })
-    } catch {
-      continue
-    }
+  try {
+    const res = await fetch(`${MIMO_BASE}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${MIMO_KEY}`,
+      },
+      body: JSON.stringify({
+        model: MIMO_MODEL,
+        messages: [{ role: 'user', content: prompt }],
+        temperature: 0.2,
+        max_completion_tokens: 256,
+      }),
+      signal: AbortSignal.timeout(55000),
+    })
+    if (!res.ok) return NextResponse.json({ reply: null })
+    const data = await res.json()
+    const reply = data.choices?.[0]?.message?.content ?? null
+    return NextResponse.json({ reply })
+  } catch {
+    return NextResponse.json({ reply: null })
   }
-
-  return NextResponse.json({ reply: null })
 }
