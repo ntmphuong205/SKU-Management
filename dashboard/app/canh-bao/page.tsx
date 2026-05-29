@@ -340,7 +340,7 @@ export default function CanhBao() {
                   'Mã SKU', 'Hành động',
                   'Dự báo 28 ngày', 'Dự báo 56 ngày',
                   ...(!isSalesReadonly ? ['Đề xuất đặt'] : []),
-                  'Độ tin cậy', 'Lý do vận hành',
+                  'Nhu cầu', 'Ghi chú',
                   ...(isSalesReadonly ? [''] : []),
                 ].map((h, i) => (
                   <th key={i} className="px-4 py-3 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
@@ -384,11 +384,7 @@ export default function CanhBao() {
                     <StatusBadge value={r.reliability_tag} type="reliability" />
                   </td>
                   <td className="px-4 py-3 text-xs text-slate-500 max-w-[200px]">
-                    {r.reason_codes?.split(' | ')
-                      .filter(rc => !rc.startsWith('High profit') && rc !== 'Frequent recent sales' && rc !== 'Stable model agreement')
-                      .slice(0, 2)
-                      .map(reasonVN)
-                      .join(' · ') || <span className="italic text-slate-300">—</span>}
+                    {r.reason_codes?.split(' | ').slice(0, 2).map(reasonVN).join(' · ') || '—'}
                   </td>
                   {isSalesReadonly && (
                     <td className="px-4 py-3 text-right whitespace-nowrap">
