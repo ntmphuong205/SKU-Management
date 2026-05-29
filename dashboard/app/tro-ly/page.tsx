@@ -198,7 +198,7 @@ export default function TroLy() {
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2 text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-full px-3 py-1.5">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block animate-pulse" />
-            Gemini AI · 15.972 SKU
+AI · 15.972 SKU
           </div>
           <button
             onClick={reset}
