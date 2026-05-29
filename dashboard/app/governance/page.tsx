@@ -676,7 +676,7 @@ export default function GovernancePage() {
       <div className="border-b border-slate-200 pb-4">
         <div className="flex items-center gap-2 mb-1">
           <ShieldCheck size={18} className="text-emerald-600" />
-          <h1 className="text-xl font-semibold text-slate-800">Governance Dashboard</h1>
+          <h1 className="text-xl font-semibold text-slate-800">Quản trị hệ thống</h1>
         </div>
         <p className="text-sm text-slate-500">Tổng quan hệ thống · Hiệu suất mô hình dự báo · Xuất báo cáo</p>
       </div>
