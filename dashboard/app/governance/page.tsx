@@ -249,7 +249,7 @@ function IngestionPanel() {
         <div className="flex items-center gap-2">
           <Database size={15} className="text-blue-600" />
           <div>
-            <p className="text-sm font-semibold text-slate-800">Auto Data Ingestion</p>
+            <p className="text-sm font-semibold text-slate-800">Nạp dữ liệu tự động</p>
             <p className="text-xs text-slate-500 mt-0.5">Pipeline tự động nạp CSV — cập nhật mỗi 5 phút</p>
           </div>
         </div>
@@ -297,7 +297,7 @@ function IngestionPanel() {
                 data.last_ingestion.status === 'success' ? 'bg-emerald-100 text-emerald-700' :
                 data.last_ingestion.status === 'partial' ? 'bg-amber-100 text-amber-700' :
                 'bg-red-100 text-red-700'
-              }`}>{data.last_ingestion.status}</span>
+              }`}>{data.last_ingestion.status === 'success' ? 'Thành công' : data.last_ingestion.status === 'partial' ? 'Một phần' : 'Lỗi'}</span>
             </div>
           )}
 
@@ -326,7 +326,7 @@ function IngestionPanel() {
                             row.status === 'success' ? 'bg-emerald-100 text-emerald-700' :
                             row.status === 'partial'  ? 'bg-amber-100 text-amber-700' :
                             'bg-red-100 text-red-700'
-                          }`}>{row.status}</span>
+                          }`}>{row.status === 'success' ? 'Thành công' : row.status === 'partial' ? 'Một phần' : 'Lỗi'}</span>
                         </td>
                         <td className="py-1.5 pr-3 text-slate-500">{row.records_total}</td>
                         <td className="py-1.5 pr-3 text-emerald-600 font-medium">{row.records_inserted}</td>
