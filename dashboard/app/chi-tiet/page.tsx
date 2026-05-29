@@ -211,7 +211,21 @@ function ChiTietContent() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ message: prompt, history: [] }),
     })
-      .then(r => r.json())
+      .then(async r => {
+        const ct = r.headers.get('Content-Type') ?? ''
+        if (ct.includes('text/plain') && r.body) {
+          const reader = r.body.getReader()
+          const decoder = new TextDecoder()
+          let text = ''
+          while (true) {
+            const { done, value } = await reader.read()
+            if (done) break
+            text += decoder.decode(value, { stream: true })
+          }
+          return { reply: text }
+        }
+        return r.json()
+      })
       .then(d => { setAiText(d.reply ?? null); setAiLoading(false) })
       .catch(() => setAiLoading(false))
   }, [sku?.ItemCode])
