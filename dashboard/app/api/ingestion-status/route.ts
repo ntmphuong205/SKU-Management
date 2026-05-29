@@ -1,12 +1,14 @@
 import { NextResponse } from 'next/server'
 
+export const dynamic = 'force-dynamic'
+
 const BACKEND = process.env.INGESTION_API_URL ?? 'http://localhost:8000'
 
 export async function GET() {
   try {
     const [statusRes, historyRes] = await Promise.all([
-      fetch(`${BACKEND}/status`, { signal: AbortSignal.timeout(4000), next: { revalidate: 0 } }),
-      fetch(`${BACKEND}/ingestion/history?limit=10`, { signal: AbortSignal.timeout(4000), next: { revalidate: 0 } }),
+      fetch(`${BACKEND}/status`, { signal: AbortSignal.timeout(4000), cache: 'no-store' }),
+      fetch(`${BACKEND}/ingestion/history?limit=10`, { signal: AbortSignal.timeout(4000), cache: 'no-store' }),
     ])
 
     if (!statusRes.ok || !historyRes.ok) throw new Error('backend error')
