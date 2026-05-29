@@ -24,79 +24,6 @@ function setCache(msg: string, reply: string, chartData: ChartPayload | null) {
   responseCache.set(cacheKey(msg), { reply, chartData, expiresAt: Date.now() + CACHE_TTL })
 }
 
-// ── Data-driven fallback (dùng khi Gemini hết quota / lỗi) ───
-function buildFallbackReply(message: string): string {
-  const skus = getSkuData()
-  const kpis = getKpiSummary(skus)
-  const lower = message.toLowerCase()
-
-  if (lower.includes('nhập hàng') || lower.includes('hết hàng') || lower.includes('khẩn') ||
-      lower.includes('cần đặt') || lower.includes('nhập gấp') || lower.includes('thiếu hàng')) {
-    const urgent = skus.map(s => enrichSku(s, 14, 7, 21))
-      .filter(s => s.recommended_action === 'Prioritize replenishment')
-      .sort((a, b) => (b.profit || 0) - (a.profit || 0)).slice(0, 5)
-    const list = urgent.map((s, i) =>
-      `${i + 1}. **${s.ItemCode}** — cần đặt ${Math.round(s._reorder).toLocaleString()} đv, lợi nhuận ${(s.profit / 1e6).toFixed(0)}M đ`
-    ).join('\n')
-    return `🔴 Hiện có **${kpis.action_urgent} SKU** cần nhập hàng ngay.\n\nTop 5 ưu tiên (theo lợi nhuận):\n${list}\n\n💡 Khuyến nghị: Xử lý các SKU lợi nhuận cao trước để tránh mất doanh thu.`
-  }
-
-  if (lower.includes('tồn kho dư') || lower.includes('dư hàng') || lower.includes('ứ đọng') ||
-      lower.includes('dư thừa') || lower.includes('giải phóng')) {
-    const over = skus.map(s => enrichSku(s, 14, 7, 21))
-      .filter(s => s._overstock).sort((a, b) => b._stock - a._stock).slice(0, 5)
-    const list = over.map((s, i) =>
-      `${i + 1}. **${s.ItemCode}** — tồn ước tính ${Math.round(s._stock).toLocaleString()} đv (nhu cầu 56 ngày: ${Math.round(s.forecast_56d_total).toLocaleString()} đv)`
-    ).join('\n')
-    return `📦 Hiện có **${kpis.overstock_skus} SKU** tồn kho dư.\n\nTop 5 tồn kho lớn nhất:\n${list}\n\n💡 Khuyến nghị: Đàm phán giảm giá hoặc chuyển kho để giải phóng vốn.`
-  }
-
-  if (lower.includes('rủi ro') || lower.includes('risk') || lower.includes('p1') || lower.includes('khẩn cấp')) {
-    const risky = skus.map(s => enrichSku(s, 14, 7, 21))
-      .filter(s => s.priority_level === 'P1 — Urgent Review' || s.risk_level === 'High Risk')
-      .sort((a, b) => (b.profit || 0) - (a.profit || 0)).slice(0, 5)
-    const list = risky.map((s, i) =>
-      `${i + 1}. **${s.ItemCode}** — ${s.risk_level} | ${s.profit_segment} | ${s.recommended_action}`
-    ).join('\n')
-    return `⚠️ Phát hiện **${risky.length}+ SKU** rủi ro cao (P1/High Risk).\n\nTop ưu tiên:\n${list}\n\n💡 Khuyến nghị: Liên hệ nhà cung cấp cho các SKU lợi nhuận cao trước.`
-  }
-
-  if (lower.includes('spike') || lower.includes('đột biến') || lower.includes('tăng mạnh')) {
-    const spiked = skus.filter(s => {
-      const hist = s.avg_daily_sales_180 || 0
-      return hist > 0 && (s.avg_forecast_per_day || 0) / hist >= 1.5
-    }).sort((a, b) => {
-      return ((b.avg_forecast_per_day || 0) / (b.avg_daily_sales_180 || 1)) -
-             ((a.avg_forecast_per_day || 0) / (a.avg_daily_sales_180 || 1))
-    }).slice(0, 5)
-    const list = spiked.map((s, i) => {
-      const ratio = ((s.avg_forecast_per_day || 0) / (s.avg_daily_sales_180 || 1)).toFixed(1)
-      return `${i + 1}. **${s.ItemCode}** — dự báo tăng ×${ratio} so với lịch sử | ${s.profit_segment}`
-    }).join('\n')
-    return `📈 Phát hiện **${spiked.length} SKU** có nhu cầu tăng đột biến.\n\nTop đột biến mạnh nhất:\n${list}\n\n💡 Khuyến nghị: Tăng đặt hàng cho nhóm này, đặc biệt các SKU lợi nhuận cao.`
-  }
-
-  if (lower.includes('top') || lower.includes('bán chạy') || lower.includes('nhu cầu cao') ||
-      lower.includes('cao nhất') || lower.includes('nhiều nhất')) {
-    const top = [...skus].sort((a, b) => b.forecast_56d_total - a.forecast_56d_total).slice(0, 5)
-    const list = top.map((s, i) =>
-      `${i + 1}. **${s.ItemCode}** — ${Math.round(s.forecast_56d_total).toLocaleString()} đv (56 ngày) | ${s.profit_segment}`
-    ).join('\n')
-    return `📊 Top 5 SKU nhu cầu cao nhất (56 ngày tới):\n${list}\n\n💡 Đảm bảo tồn kho đủ cho nhóm này trước khi vào mùa cao điểm.`
-  }
-
-  if (lower.includes('lợi nhuận') || lower.includes('high profit') || lower.includes('doanh thu')) {
-    const hp = skus.filter(s => s.profit_segment === 'High Profit')
-      .sort((a, b) => (b.profit || 0) - (a.profit || 0)).slice(0, 5)
-    const list = hp.map((s, i) =>
-      `${i + 1}. **${s.ItemCode}** — lợi nhuận ${((s.profit || 0) / 1e6).toFixed(0)}M đ | ${s.demand_class}`
-    ).join('\n')
-    return `💰 Hiện có **${kpis.high_profit_skus} SKU** phân khúc lợi nhuận cao.\n\nTop 5:\n${list}\n\n💡 Ưu tiên đảm bảo tồn kho cho nhóm này để bảo vệ doanh thu.`
-  }
-
-  // Default tổng quan
-  return `📊 **Tổng quan hệ thống hôm nay:**\n- Tổng **${kpis.total_skus.toLocaleString()} SKU**, ${kpis.active_skus.toLocaleString()} đang hoạt động\n- 🔴 **${kpis.action_urgent} SKU** cần nhập hàng ngay\n- ⚠️ **${kpis.stockout_risk_skus} SKU** nguy cơ hết hàng\n- 📦 **${kpis.overstock_skus} SKU** tồn kho dư\n- Tổng nhu cầu 56 ngày: **${Math.round(kpis.total_forecast_56d).toLocaleString()} đv**\n\nBạn muốn xem chi tiết mục nào?`
-}
 
 const OPENAI_KEY = process.env.OPENAI_API_KEY
 const OPENAI_BASE = 'https://api.openai.com/v1'
@@ -395,11 +322,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ reply: cached.reply, chartData: cached.chartData ?? undefined })
   }
 
-  // ── No API key → fallback ngay ────────────────────────────────
   if (!OPENAI_KEY) {
-    const reply = buildFallbackReply(message)
-    setCache(message, reply, chartData)
-    return NextResponse.json({ reply, chartData: chartData ?? undefined })
+    return NextResponse.json({ reply: '⚠️ Chưa cấu hình OPENAI_API_KEY.' })
   }
 
   const contextData = buildContext(message)
@@ -449,23 +373,16 @@ ${contextData}`
 
     const data = await res.json()
 
-    // Quota / rate-limit → dùng fallback thay vì báo lỗi
     if (!res.ok) {
-      console.warn('OpenAI error, using fallback. Status:', res.status, data?.error?.message)
-      const reply = buildFallbackReply(message)
-      setCache(message, reply, chartData)
-      return NextResponse.json({ reply, chartData: chartData ?? undefined })
+      console.error('OpenAI error:', res.status, data?.error?.message)
+      return NextResponse.json({ reply: `❌ Lỗi API (${res.status}): ${data?.error?.message ?? 'Unknown'}` })
     }
 
-    const reply: string =
-      data.choices?.[0]?.message?.content ?? buildFallbackReply(message)
-
+    const reply: string = data.choices?.[0]?.message?.content ?? 'Không nhận được phản hồi từ AI.'
     setCache(message, reply, chartData)
     return NextResponse.json({ reply, chartData: chartData ?? undefined })
   } catch (err) {
     console.error('Chat error:', err)
-    const reply = buildFallbackReply(message)
-    setCache(message, reply, chartData)
-    return NextResponse.json({ reply, chartData: chartData ?? undefined })
+    return NextResponse.json({ reply: '❌ Lỗi kết nối đến OpenAI. Vui lòng thử lại.' })
   }
 }
