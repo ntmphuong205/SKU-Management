@@ -25,9 +25,9 @@ function setCache(msg: string, reply: string, chartData: ChartPayload | null) {
 }
 
 
-const OPENAI_KEY = process.env.OPENAI_API_KEY
-const OPENAI_BASE = 'https://api.openai.com/v1'
-const OPENAI_MODEL = 'gpt-4o-mini'
+const GEMINI_KEY = process.env.GEMINI_API_KEY
+const GEMINI_BASE = 'https://generativelanguage.googleapis.com/v1beta'
+const GEMINI_MODEL = 'gemini-2.0-flash'
 
 interface ChatMessage {
   role: 'user' | 'assistant'
@@ -322,8 +322,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ reply: cached.reply, chartData: cached.chartData ?? undefined })
   }
 
-  if (!OPENAI_KEY) {
-    return NextResponse.json({ reply: '⚠️ Chưa cấu hình OPENAI_API_KEY.' })
+  if (!GEMINI_KEY) {
+    return NextResponse.json({ reply: '⚠️ Chưa cấu hình GEMINI_API_KEY.' })
   }
 
   const contextData = buildContext(message)
@@ -347,42 +347,37 @@ Tồn kho mô phỏng: assumed_stock = avg_forecast_per_day × 21 ngày (lead ti
 DỮ LIỆU THỰC TẾ (cập nhật real-time):
 ${contextData}`
 
-  const messages = [
-    { role: 'system', content: systemPrompt },
+  const contents = [
     ...(history as ChatMessage[]).slice(-8).map(m => ({
-      role: m.role as 'user' | 'assistant',
-      content: m.content,
+      role: m.role === 'user' ? 'user' : 'model',
+      parts: [{ text: m.content }],
     })),
-    { role: 'user' as const, content: message },
+    { role: 'user', parts: [{ text: message }] },
   ]
 
   try {
-    const res = await fetch(`${OPENAI_BASE}/chat/completions`, {
+    const res = await fetch(`${GEMINI_BASE}/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_KEY}`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${OPENAI_KEY}`,
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: OPENAI_MODEL,
-        messages,
-        temperature: 0.2,
-        max_tokens: 1024,
+        system_instruction: { parts: [{ text: systemPrompt }] },
+        contents,
+        generationConfig: { temperature: 0.2, maxOutputTokens: 1024 },
       }),
     })
 
     const data = await res.json()
 
     if (!res.ok) {
-      console.error('OpenAI error:', res.status, data?.error?.message)
+      console.error('Gemini error:', res.status, data?.error?.message)
       return NextResponse.json({ reply: `❌ Lỗi API (${res.status}): ${data?.error?.message ?? 'Unknown'}` })
     }
 
-    const reply: string = data.choices?.[0]?.message?.content ?? 'Không nhận được phản hồi từ AI.'
+    const reply: string = data.candidates?.[0]?.content?.parts?.[0]?.text ?? 'Không nhận được phản hồi từ AI.'
     setCache(message, reply, chartData)
     return NextResponse.json({ reply, chartData: chartData ?? undefined })
   } catch (err) {
     console.error('Chat error:', err)
-    return NextResponse.json({ reply: '❌ Lỗi kết nối đến OpenAI. Vui lòng thử lại.' })
+    return NextResponse.json({ reply: '❌ Lỗi kết nối đến Gemini. Vui lòng thử lại.' })
   }
 }
