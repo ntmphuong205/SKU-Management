@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { Send, Bot, User, Sparkles, RotateCcw } from 'lucide-react'
+import ReactMarkdown from 'react-markdown'
 import {
   BarChart, Bar, XAxis, YAxis, Cell,
   Tooltip, ResponsiveContainer,
@@ -84,12 +85,12 @@ function MessageBubble({ msg }: { msg: Message }) {
 
       {/* Bubble + optional chart */}
       <div className={`max-w-[78%] ${isUser ? '' : 'w-full'}`}>
-        <div className={`rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap ${
+        <div className={`rounded-2xl px-4 py-3 text-sm leading-relaxed ${
           isUser
-            ? 'bg-blue-600 text-white rounded-tr-sm'
-            : 'bg-white border border-slate-200 text-slate-700 rounded-tl-sm shadow-sm'
+            ? 'bg-blue-600 text-white rounded-tr-sm whitespace-pre-wrap'
+            : 'bg-white border border-slate-200 text-slate-700 rounded-tl-sm shadow-sm prose prose-sm max-w-none prose-p:my-1 prose-headings:my-1.5 prose-ul:my-1 prose-li:my-0 prose-hr:my-2'
         }`}>
-          {msg.content}
+          {isUser ? msg.content : <ReactMarkdown>{msg.content}</ReactMarkdown>}
           {!isUser && msg.chartData && msg.chartData.items.length > 0 && (
             <MiniChart data={msg.chartData} />
           )}
