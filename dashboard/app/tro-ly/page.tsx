@@ -155,21 +155,48 @@ export default function TroLy() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: trimmed, history }),
       })
-      const data = await res.json()
-      setMessages(prev => [...prev, {
-        role: 'assistant',
-        content: data.reply || 'Không có phản hồi.',
-        ts: Date.now(),
-        chartData: data.chartData ?? undefined,
-      }])
+
+      const contentType = res.headers.get('Content-Type') ?? ''
+
+      if (contentType.includes('text/plain') && res.body) {
+        // Streaming — hiện chữ dần
+        const chartDataHeader = res.headers.get('X-Chart-Data')
+        const chartData = chartDataHeader ? JSON.parse(chartDataHeader) : undefined
+        setMessages(prev => [...prev, { role: 'assistant', content: '', ts: Date.now(), chartData }])
+        setLoading(false)
+
+        const reader = res.body.getReader()
+        const decoder = new TextDecoder()
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+          const chunk = decoder.decode(value, { stream: true })
+          setMessages(prev => {
+            const msgs = [...prev]
+            const last = msgs[msgs.length - 1]
+            msgs[msgs.length - 1] = { ...last, content: last.content + chunk }
+            return msgs
+          })
+        }
+      } else {
+        // JSON (cache hit hoặc lỗi)
+        const data = await res.json()
+        setMessages(prev => [...prev, {
+          role: 'assistant',
+          content: data.reply || 'Không có phản hồi.',
+          ts: Date.now(),
+          chartData: data.chartData ?? undefined,
+        }])
+        setLoading(false)
+      }
     } catch {
       setMessages(prev => [...prev, {
         role: 'assistant',
         content: '❌ Lỗi kết nối. Vui lòng thử lại.',
         ts: Date.now(),
       }])
-    } finally {
       setLoading(false)
+    } finally {
       setTimeout(() => inputRef.current?.focus(), 100)
     }
   }

@@ -368,19 +368,59 @@ ${contextData}`
         messages,
         temperature: 0.2,
         max_completion_tokens: 1024,
+        stream: true,
       }),
     })
 
-    const data = await res.json()
-
     if (!res.ok) {
-      console.error('MiMo error:', res.status, data?.error?.message)
-      return NextResponse.json({ reply: `❌ Lỗi API (${res.status}): ${data?.error?.message ?? 'Unknown'}` })
+      const errData = await res.json().catch(() => ({}))
+      return NextResponse.json({ reply: `❌ Lỗi API (${res.status}): ${errData?.error?.message ?? 'Unknown'}` })
     }
 
-    const reply: string = data.choices?.[0]?.message?.content ?? 'Không nhận được phản hồi từ AI.'
-    setCache(message, reply, chartData)
-    return NextResponse.json({ reply, chartData: chartData ?? undefined })
+    // Stream text chunks về client
+    let fullReply = ''
+    const encoder = new TextEncoder()
+
+    const stream = new ReadableStream({
+      async start(controller) {
+        const reader = res.body!.getReader()
+        const decoder = new TextDecoder()
+        let buffer = ''
+        try {
+          while (true) {
+            const { done, value } = await reader.read()
+            if (done) break
+            buffer += decoder.decode(value, { stream: true })
+            const lines = buffer.split('\n')
+            buffer = lines.pop() ?? ''
+            for (const line of lines) {
+              if (!line.startsWith('data: ')) continue
+              const raw = line.slice(6).trim()
+              if (raw === '[DONE]') continue
+              try {
+                const json = JSON.parse(raw)
+                const text: string = json.choices?.[0]?.delta?.content ?? ''
+                if (text) {
+                  fullReply += text
+                  controller.enqueue(encoder.encode(text))
+                }
+              } catch { /* ignore parse errors */ }
+            }
+          }
+        } finally {
+          setCache(message, fullReply, chartData)
+          controller.close()
+        }
+      },
+    })
+
+    return new Response(stream, {
+      headers: {
+        'Content-Type': 'text/plain; charset=utf-8',
+        'X-Chart-Data': chartData ? JSON.stringify(chartData) : '',
+        'Cache-Control': 'no-cache',
+      },
+    })
   } catch (err) {
     console.error('Chat error:', err)
     return NextResponse.json({ reply: '❌ Lỗi kết nối đến AI. Vui lòng thử lại.' })
