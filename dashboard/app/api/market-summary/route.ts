@@ -50,7 +50,7 @@ async function callGemini(prompt: string): Promise<string> {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           contents: [{ role: 'user', parts: [{ text: prompt }] }],
-          generationConfig: { temperature: 0.3, maxOutputTokens: 512 },
+          generationConfig: { temperature: 0.3, maxOutputTokens: 1024 },
         }),
         signal: AbortSignal.timeout(10000),
       })
