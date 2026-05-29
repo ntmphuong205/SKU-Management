@@ -155,6 +155,11 @@ function ChiTietContent() {
       note: noteInput,
       updatedAt: new Date().toISOString(),
       updatedBy: role ?? 'logistics',
+      forecast28d: f28,
+      chiPhiVon,
+      doanhThuDK,
+      loiNhuanDK,
+      marginPct: marginPct ?? null,
     }
     saveOverride(ov)
     setOverride(ov)

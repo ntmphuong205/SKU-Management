@@ -6,6 +6,12 @@ export interface SkuOverride {
   note: string
   updatedAt: string
   updatedBy: string
+  // Giá trị tính toán tại thời điểm lưu (để Quản lý xem được)
+  forecast28d: number
+  chiPhiVon: number
+  doanhThuDK: number
+  loiNhuanDK: number
+  marginPct: number | null
 }
 
 const KEY = 'sku_overrides_v1'

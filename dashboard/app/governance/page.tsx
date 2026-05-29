@@ -1,8 +1,10 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
-import { Download, ShieldCheck, BarChart3, AlertTriangle, Package, CheckCircle, XCircle, Clock, Database, RefreshCw, Wifi, WifiOff, Play, TrendingUp, TrendingDown, Activity } from 'lucide-react'
+import { Download, ShieldCheck, BarChart3, AlertTriangle, Package, CheckCircle, XCircle, Clock, Database, RefreshCw, Wifi, WifiOff, Play, TrendingUp, TrendingDown, Activity, Calculator, Link as LinkIcon } from 'lucide-react'
+import Link from 'next/link'
 import { getProposals, updateProposal, type Proposal } from '@/lib/proposals'
+import { getAllOverrides, removeOverride, type SkuOverride } from '@/lib/overrides'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   Cell, PieChart, Pie, Legend,
@@ -104,6 +106,106 @@ const DEMO_DATA: IngestionStatus = {
     { id: 2, filename: 'sales_batch_20260526_am.csv',  status: 'success', records_total: 290, records_inserted: 287, records_duplicate:  3, records_invalid: 0, error_message: null, started_at: new Date(Date.now() - 4319 * 60000).toISOString(), finished_at: new Date(Date.now() - 4318 * 60000).toISOString() },
     { id: 1, filename: 'import_initial_20260525.csv',  status: 'success', records_total: 8200, records_inserted: 8200, records_duplicate: 0, records_invalid: 0, error_message: null, started_at: new Date(Date.now() - 5759 * 60000).toISOString(), finished_at: new Date(Date.now() - 5756 * 60000).toISOString() },
   ],
+}
+
+function FinancialEvalPanel() {
+  const [evals, setEvals] = useState<SkuOverride[]>([])
+
+  function reload() {
+    setEvals(getAllOverrides().sort((a, b) =>
+      new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+    ))
+  }
+
+  useEffect(() => { reload() }, [])
+
+  if (evals.length === 0) return (
+    <div className="bg-white rounded-xl border border-slate-100 shadow-sm shadow-slate-200/50 p-6">
+      <div className="flex items-center gap-2 mb-1">
+        <Calculator size={15} className="text-emerald-600" />
+        <h2 className="text-sm font-semibold text-slate-800">Tái đánh giá tài chính từ Logistics</h2>
+      </div>
+      <p className="text-sm text-slate-400 mt-3 text-center py-6">Chưa có đánh giá nào được lưu.</p>
+    </div>
+  )
+
+  return (
+    <div className="bg-white rounded-xl border border-slate-100 shadow-sm shadow-slate-200/50 overflow-hidden">
+      <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+        <div className="flex items-center gap-2">
+          <Calculator size={15} className="text-emerald-600" />
+          <h2 className="text-sm font-semibold text-slate-800">Tái đánh giá tài chính từ Logistics</h2>
+          <span className="text-[11px] text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">{evals.length} SKU</span>
+        </div>
+        <span className="text-[11px] text-slate-400">Lưu trữ cục bộ · Click SKU để xem chi tiết</span>
+      </div>
+
+      <div className="overflow-x-auto">
+        <table className="w-full">
+          <thead className="bg-slate-50 border-b border-slate-100">
+            <tr>
+              {['Mã SKU', 'Giá nhập/đv', 'Giá bán/đv', 'SL kế hoạch', 'Lợi nhuận DK (28 ngày)', 'Biên LN', 'Ghi chú', 'Đánh giá bởi', ''].map((h, i) => (
+                <th key={i} className="px-4 py-2.5 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-wider whitespace-nowrap">{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-50">
+            {evals.map(e => {
+              const hasFinancial = e.inputPrice !== null && e.sellPrice !== null
+              return (
+                <tr key={e.sku} className="hover:bg-slate-50 transition-colors">
+                  <td className="px-4 py-3">
+                    <Link href={`/chi-tiet?sku=${e.sku}`}
+                      className="font-mono text-sm font-semibold text-blue-600 hover:underline flex items-center gap-1">
+                      {e.sku} <LinkIcon size={11} />
+                    </Link>
+                  </td>
+                  <td className="px-4 py-3 text-sm text-slate-700">
+                    {e.inputPrice != null ? `${e.inputPrice.toLocaleString()} đ` : <span className="text-slate-300">—</span>}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-slate-700">
+                    {e.sellPrice != null ? `${e.sellPrice.toLocaleString()} đ` : <span className="text-slate-300">—</span>}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-slate-700 text-right">
+                    {e.planQty > 0 ? `${e.planQty.toLocaleString()} đv` : <span className="text-slate-300">—</span>}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-right">
+                    {hasFinancial
+                      ? <span className={`font-semibold ${e.loiNhuanDK >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>
+                          {e.loiNhuanDK >= 0 ? '+' : ''}{fmt(e.loiNhuanDK)} đ
+                        </span>
+                      : <span className="text-slate-300">—</span>}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-right">
+                    {e.marginPct !== null
+                      ? <span className={`font-bold px-2 py-0.5 rounded text-xs ${
+                          e.marginPct >= 20 ? 'bg-emerald-100 text-emerald-700'
+                          : e.marginPct >= 0 ? 'bg-amber-100 text-amber-700'
+                          : 'bg-red-100 text-red-700'
+                        }`}>{e.marginPct.toFixed(1)}%</span>
+                      : <span className="text-slate-300">—</span>}
+                  </td>
+                  <td className="px-4 py-3 text-xs text-slate-500 max-w-[160px] truncate" title={e.note}>
+                    {e.note || <span className="text-slate-300">—</span>}
+                  </td>
+                  <td className="px-4 py-3 text-xs text-slate-400 whitespace-nowrap">
+                    <span className="capitalize">{e.updatedBy}</span>
+                    <span className="block text-[10px]">{new Date(e.updatedAt).toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' })}</span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <button onClick={() => { removeOverride(e.sku); reload() }}
+                      className="text-[11px] text-slate-400 hover:text-red-500 transition-colors">
+                      Xóa
+                    </button>
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
 }
 
 function IngestionPanel() {
@@ -757,6 +859,9 @@ export default function GovernancePage() {
           </div>
         </div>
       </div>
+
+      {/* ── Tái đánh giá tài chính từ Logistics ────────────────── */}
+      <FinancialEvalPanel />
 
       {/* ── Ingestion pipeline ──────────────────────────────────── */}
       <IngestionPanel />
