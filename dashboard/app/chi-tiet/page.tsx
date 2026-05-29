@@ -2,10 +2,12 @@
 
 import { useEffect, useState, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
-import { Search, Sparkles } from 'lucide-react'
+import { Search, Sparkles, SlidersHorizontal, CheckCircle2, Trash2 } from 'lucide-react'
 import StatusBadge, { IntelBadges } from '@/components/StatusBadge'
 import KpiCard from '@/components/KpiCard'
 import { RELIABILITY_LABEL } from '@/lib/types'
+import { useRole } from '@/context/RoleContext'
+import { getOverride, saveOverride, removeOverride, type SkuOverride } from '@/lib/overrides'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, Legend,
@@ -82,11 +84,19 @@ function ChiTietContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const skuParam = searchParams.get('sku') ?? ''
+  const { role } = useRole()
+  const canOverride = role === 'logistics' || role === 'manager'
 
   const [searchInput, setSearchInput] = useState(skuParam)
   const [sku, setSku] = useState<SkuDetail | null>(null)
   const [loading, setLoading] = useState(false)
   const [notFound, setNotFound] = useState(false)
+
+  // ── Override states ───────────────────────────────────────────
+  const [override, setOverride]   = useState<SkuOverride | null>(null)
+  const [multInput, setMultInput] = useState(1.0)
+  const [noteInput, setNoteInput] = useState('')
+  const [savedAnim, setSavedAnim] = useState(false)
 
   // ── AI explanation ────────────────────────────────────────────
   const [aiText, setAiText]       = useState<string | null>(null)
@@ -113,6 +123,44 @@ function ChiTietContent() {
   }
 
   useEffect(() => { if (skuParam) { setSearchInput(skuParam); doSearch(skuParam) } }, [skuParam])
+
+  // Load override whenever SKU changes
+  useEffect(() => {
+    if (!sku) return
+    const ov = getOverride(sku.ItemCode)
+    setOverride(ov)
+    setMultInput(ov?.multiplier ?? 1.0)
+    setNoteInput(ov?.note ?? '')
+  }, [sku?.ItemCode])
+
+  function handleSaveOverride() {
+    if (!sku) return
+    const ov: SkuOverride = {
+      sku: sku.ItemCode,
+      multiplier: multInput,
+      note: noteInput,
+      updatedAt: new Date().toISOString(),
+      updatedBy: role ?? 'logistics',
+    }
+    saveOverride(ov)
+    setOverride(ov)
+    setSavedAnim(true)
+    setTimeout(() => setSavedAnim(false), 2000)
+  }
+
+  function handleRemoveOverride() {
+    if (!sku) return
+    removeOverride(sku.ItemCode)
+    setOverride(null)
+    setMultInput(1.0)
+    setNoteInput('')
+  }
+
+  // Adjusted forecast values (apply multiplier if override exists)
+  const mult = override?.multiplier ?? 1
+  const adjF28  = sku ? Math.round(sku.forecast_28d_validation * mult) : 0
+  const adjF29  = sku ? Math.round(sku.forecast_28d_evaluation * mult) : 0
+  const adjF56  = sku ? Math.round(sku.forecast_56d_total * mult) : 0
 
   // Auto AI explanation when SKU changes
   useEffect(() => {
@@ -237,11 +285,18 @@ function ChiTietContent() {
 
           {/* KPI row 1 — Dự báo */}
           <div>
-            <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-3">Dự báo nhu cầu</h2>
+            <div className="flex items-center gap-3 mb-3">
+              <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-widest">Dự báo nhu cầu</h2>
+              {override && mult !== 1 && (
+                <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
+                  <SlidersHorizontal size={10} /> Đã điều chỉnh ×{mult.toFixed(1)}
+                </span>
+              )}
+            </div>
             <div className="grid grid-cols-3 gap-3">
-              <KpiCard label="Dự báo 28 ngày tới (F1–F28)"  value={fmt(sku.forecast_28d_validation, ' đv')} variant="info" />
-              <KpiCard label="Dự báo 28 ngày tiếp (F29–F56)" value={fmt(sku.forecast_28d_evaluation, ' đv')} />
-              <KpiCard label="Tổng dự báo 56 ngày"           value={fmt(sku.forecast_56d_total, ' đv')} variant="info" />
+              <KpiCard label={`Dự báo 28 ngày tới (F1–F28)${override && mult !== 1 ? ' — đã điều chỉnh' : ''}`}  value={fmt(adjF28, ' đv')} variant="info" />
+              <KpiCard label={`Dự báo 28 ngày tiếp (F29–F56)${override && mult !== 1 ? ' — đã điều chỉnh' : ''}`} value={fmt(adjF29, ' đv')} />
+              <KpiCard label={`Tổng dự báo 56 ngày${override && mult !== 1 ? ' — đã điều chỉnh' : ''}`}           value={fmt(adjF56, ' đv')} variant="info" />
             </div>
           </div>
 
@@ -322,6 +377,85 @@ function ChiTietContent() {
               </div>
             </div>
           </div>
+          {/* ── Override panel — chỉ Logistics / Quản lý ──────── */}
+          {canOverride && (
+            <div className="rounded-xl border border-amber-200 bg-amber-50/60 p-5 space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <SlidersHorizontal size={15} className="text-amber-600" />
+                  <h3 className="text-sm font-semibold text-amber-800">Điều chỉnh thông số dự báo</h3>
+                </div>
+                {override && (
+                  <span className="text-[11px] text-slate-500">
+                    Cập nhật lần cuối: {new Date(override.updatedAt).toLocaleString('vi-VN')} bởi <b>{override.updatedBy}</b>
+                  </span>
+                )}
+              </div>
+
+              {/* Multiplier slider */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-sm text-slate-700 font-medium">
+                    Hệ số điều chỉnh dự báo
+                  </label>
+                  <span className={`text-sm font-bold px-2 py-0.5 rounded ${
+                    multInput < 0.9 ? 'bg-red-100 text-red-700'
+                    : multInput > 1.1 ? 'bg-blue-100 text-blue-700'
+                    : 'bg-slate-100 text-slate-600'
+                  }`}>×{multInput.toFixed(1)}</span>
+                </div>
+                <input
+                  type="range" min={0.1} max={3.0} step={0.1}
+                  value={multInput}
+                  onChange={e => setMultInput(parseFloat(e.target.value))}
+                  className="w-full accent-amber-500"
+                />
+                <div className="flex justify-between text-[10px] text-slate-400">
+                  <span>×0.1 (giảm 90%)</span>
+                  <span>×1.0 (giữ nguyên)</span>
+                  <span>×3.0 (tăng gấp 3)</span>
+                </div>
+                <p className="text-xs text-slate-500">
+                  Dự báo điều chỉnh: <b>{fmt(Math.round(sku.forecast_56d_total * multInput), ' đv')}</b> trong 56 ngày
+                  {multInput !== 1 && <span className="ml-1 text-slate-400">(gốc: {fmt(sku.forecast_56d_total, ' đv')})</span>}
+                </p>
+              </div>
+
+              {/* Note */}
+              <div className="space-y-1">
+                <label className="text-sm text-slate-700 font-medium">Lý do điều chỉnh</label>
+                <textarea
+                  value={noteInput}
+                  onChange={e => setNoteInput(e.target.value)}
+                  placeholder="VD: Nhà cung cấp tăng giá đầu vào 2×, dự kiến cầu giảm. Chờ xác nhận từ phía Kinh doanh."
+                  rows={2}
+                  className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-amber-400 bg-white"
+                />
+              </div>
+
+              {/* Actions */}
+              <div className="flex gap-3">
+                <button
+                  onClick={handleSaveOverride}
+                  className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+                    savedAnim
+                      ? 'bg-emerald-600 text-white'
+                      : 'bg-amber-600 hover:bg-amber-700 text-white'
+                  }`}
+                >
+                  {savedAnim ? <><CheckCircle2 size={14} /> Đã lưu</> : 'Lưu điều chỉnh'}
+                </button>
+                {override && (
+                  <button
+                    onClick={handleRemoveOverride}
+                    className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-lg border border-slate-200 text-slate-600 hover:bg-red-50 hover:border-red-200 hover:text-red-600 transition-colors"
+                  >
+                    <Trash2 size={13} /> Xóa điều chỉnh
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       )}
 

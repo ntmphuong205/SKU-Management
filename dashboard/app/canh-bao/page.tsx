@@ -1,12 +1,13 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
-import { AlertTriangle, Download, Lock, Send, CheckCircle, XCircle, Clock } from 'lucide-react'
+import { AlertTriangle, Download, Lock, Send, CheckCircle, XCircle, Clock, SlidersHorizontal } from 'lucide-react'
 import Link from 'next/link'
 import StatusBadge, { IntelBadges } from '@/components/StatusBadge'
 import { ACTION_LABEL } from '@/lib/types'
 import { useRole } from '@/context/RoleContext'
 import { getProposals, saveProposal, type Proposal } from '@/lib/proposals'
+import { getOverrides, type SkuOverride } from '@/lib/overrides'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip,
   ResponsiveContainer, Cell, LabelList,
@@ -53,6 +54,9 @@ export default function CanhBao() {
   // For sales, always lock to stockout-only
   const effectiveFilter = isSalesReadonly ? 'Prioritize replenishment' : actionFilter
 
+  // Override map (logistics/manager only)
+  const [overrides, setOverrides] = useState<Record<string, SkuOverride>>({})
+
   // Proposal states (sales only)
   const [proposalModal, setProposalModal] = useState<{ sku: string; forecast: number } | null>(null)
   const [proposalQty, setProposalQty]     = useState(0)
@@ -68,6 +72,7 @@ export default function CanhBao() {
 
   useEffect(() => {
     if (isSalesReadonly) refreshProposals()
+    else setOverrides(getOverrides())
   }, [isSalesReadonly])
 
   function openProposal(sku: string, forecast: number) {
@@ -365,18 +370,42 @@ export default function CanhBao() {
                     <StatusBadge value={r.recommended_action} type="action" />
                   </td>
                   <td className="px-4 py-3 text-right text-sm text-slate-700">
-                    {r.forecast_28d_validation?.toLocaleString(undefined,{maximumFractionDigits:1})}
+                    {(() => {
+                      const ov = overrides[r.ItemCode]
+                      const adj = ov ? Math.round(r.forecast_28d_validation * ov.multiplier) : r.forecast_28d_validation
+                      return (
+                        <span className="flex items-center justify-end gap-1.5">
+                          {adj?.toLocaleString(undefined,{maximumFractionDigits:0})}
+                          {ov && ov.multiplier !== 1 && (
+                            <span title={`Đã điều chỉnh ×${ov.multiplier.toFixed(1)}: ${ov.note || ''}`}
+                              className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-amber-600 bg-amber-50 border border-amber-200 px-1 rounded cursor-help">
+                              <SlidersHorizontal size={8} />×{ov.multiplier.toFixed(1)}
+                            </span>
+                          )}
+                        </span>
+                      )
+                    })()}
                   </td>
                   <td className="px-4 py-3 text-right text-sm text-slate-700">
-                    {r.forecast_56d_total?.toLocaleString(undefined,{maximumFractionDigits:1})}
+                    {(() => {
+                      const ov = overrides[r.ItemCode]
+                      const adj = ov ? Math.round(r.forecast_56d_total * ov.multiplier) : r.forecast_56d_total
+                      return adj?.toLocaleString(undefined,{maximumFractionDigits:0})
+                    })()}
                   </td>
                   {!isSalesReadonly && (
                     <td className="px-4 py-3 text-right text-sm font-semibold">
                       {r.forecast_28d_validation > 0 &&
                        ['Prioritize replenishment', 'Review with Sales', 'Manual review required'].includes(r.recommended_action)
-                        ? <span className={r.recommended_action === 'Prioritize replenishment' ? 'text-red-700' : 'text-blue-700'}>
-                            {r.forecast_28d_validation.toLocaleString(undefined, {maximumFractionDigits: 0})}
-                          </span>
+                        ? (() => {
+                            const ov = overrides[r.ItemCode]
+                            const adj = ov ? Math.round(r.forecast_28d_validation * ov.multiplier) : r.forecast_28d_validation
+                            return (
+                              <span className={r.recommended_action === 'Prioritize replenishment' ? 'text-red-700' : 'text-blue-700'}>
+                                {adj.toLocaleString(undefined, {maximumFractionDigits: 0})}
+                              </span>
+                            )
+                          })()
                         : <span className="text-slate-400">—</span>}
                     </td>
                   )}

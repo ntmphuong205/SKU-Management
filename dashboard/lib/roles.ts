@@ -1,7 +1,7 @@
 import {
   LayoutDashboard, AlertTriangle, List,
   Search, PackageCheck, Sparkles,
-  TrendingUp, Package, BarChart3,
+  TrendingUp, Package, BarChart3, SlidersHorizontal,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
@@ -43,8 +43,9 @@ export const ROLES: Record<RoleId, RoleMeta> = {
     color: 'text-amber-700',
     bg: 'bg-amber-50 border-amber-200',
     nav: [
-      { href: '/canh-bao',  label: 'Risk Monitor',         icon: AlertTriangle },
+      { href: '/canh-bao',  label: 'Rủi ro tồn kho',      icon: AlertTriangle },
       { href: '/danh-sach', label: 'Tồn kho & Hoàn hàng', icon: Package       },
+      { href: '/chi-tiet',  label: 'Điều chỉnh SKU',       icon: SlidersHorizontal },
       { href: '/mo-phong',  label: 'Mô phỏng tồn kho',    icon: PackageCheck  },
       { href: '/tro-ly',    label: 'Trợ lý AI',            icon: Sparkles      },
     ],
