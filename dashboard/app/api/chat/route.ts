@@ -25,9 +25,9 @@ function setCache(msg: string, reply: string, chartData: ChartPayload | null) {
 }
 
 
-const GEMINI_KEY = process.env.GEMINI_API_KEY
-const GEMINI_BASE = 'https://generativelanguage.googleapis.com/v1beta'
-const GEMINI_MODEL = 'gemini-2.0-flash'
+const MIMO_KEY = process.env.MIMO_API_KEY
+const MIMO_BASE = 'https://api.xiaomimimo.com/v1'
+const MIMO_MODEL = 'mimo-v2.5-pro'
 
 interface ChatMessage {
   role: 'user' | 'assistant'
@@ -322,8 +322,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ reply: cached.reply, chartData: cached.chartData ?? undefined })
   }
 
-  if (!GEMINI_KEY) {
-    return NextResponse.json({ reply: '⚠️ Chưa cấu hình GEMINI_API_KEY.' })
+  if (!MIMO_KEY) {
+    return NextResponse.json({ reply: '⚠️ Chưa cấu hình MIMO_API_KEY.' })
   }
 
   const contextData = buildContext(message)
@@ -347,37 +347,42 @@ Tồn kho mô phỏng: assumed_stock = avg_forecast_per_day × 21 ngày (lead ti
 DỮ LIỆU THỰC TẾ (cập nhật real-time):
 ${contextData}`
 
-  const contents = [
+  const messages = [
+    { role: 'system', content: systemPrompt },
     ...(history as ChatMessage[]).slice(-8).map(m => ({
-      role: m.role === 'user' ? 'user' : 'model',
-      parts: [{ text: m.content }],
+      role: m.role as 'user' | 'assistant',
+      content: m.content,
     })),
-    { role: 'user', parts: [{ text: message }] },
+    { role: 'user' as const, content: message },
   ]
 
   try {
-    const res = await fetch(`${GEMINI_BASE}/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_KEY}`, {
+    const res = await fetch(`${MIMO_BASE}/chat/completions`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${MIMO_KEY}`,
+      },
       body: JSON.stringify({
-        system_instruction: { parts: [{ text: systemPrompt }] },
-        contents,
-        generationConfig: { temperature: 0.2, maxOutputTokens: 1024 },
+        model: MIMO_MODEL,
+        messages,
+        temperature: 0.2,
+        max_completion_tokens: 1024,
       }),
     })
 
     const data = await res.json()
 
     if (!res.ok) {
-      console.error('Gemini error:', res.status, data?.error?.message)
+      console.error('MiMo error:', res.status, data?.error?.message)
       return NextResponse.json({ reply: `❌ Lỗi API (${res.status}): ${data?.error?.message ?? 'Unknown'}` })
     }
 
-    const reply: string = data.candidates?.[0]?.content?.parts?.[0]?.text ?? 'Không nhận được phản hồi từ AI.'
+    const reply: string = data.choices?.[0]?.message?.content ?? 'Không nhận được phản hồi từ AI.'
     setCache(message, reply, chartData)
     return NextResponse.json({ reply, chartData: chartData ?? undefined })
   } catch (err) {
     console.error('Chat error:', err)
-    return NextResponse.json({ reply: '❌ Lỗi kết nối đến Gemini. Vui lòng thử lại.' })
+    return NextResponse.json({ reply: '❌ Lỗi kết nối đến AI. Vui lòng thử lại.' })
   }
 }
